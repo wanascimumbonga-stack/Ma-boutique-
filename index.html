@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ma boutique</title>
+<meta name="theme-color" content="#FFB703">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="logo-192.png">
+<link rel="apple-touch-icon" href="logo-192.png">
+<style>
+:root{--bg:#F3F6F9;--card:#FFFFFF;--ink:#0F2A43;--mute:#5E7388;--line:#DCE4EC;--accent:#FFB703;--accent-ink:#0F2A43;--ok:#14855C;--bad:#C43B3B;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1620;--card:#13242F;--ink:#EAF1F7;--mute:#92A7B8;--line:#24394A;--accent:#FFB703;--accent-ink:#0B1620;--ok:#38C48F;--bad:#F07A7A}}
+:root[data-theme="dark"]{--bg:#0B1620;--card:#13242F;--ink:#EAF1F7;--mute:#92A7B8;--line:#24394A;--accent:#FFB703;--accent-ink:#0B1620;--ok:#38C48F;--bad:#F07A7A}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;font-size:16px;line-height:1.4}
+main{max-width:520px;margin:0 auto;padding:16px 16px 40px}
+.top{display:flex;justify-content:space-between;align-items:baseline;color:var(--mute);font-size:14px}
+h1{font-size:20px;margin:4px 0 12px}
+.total{background:var(--accent);color:var(--accent-ink);border-radius:18px;padding:18px 20px}
+.total small{display:block;font-size:14px;opacity:.8}
+.total b{font-size:40px;letter-spacing:-.5px;line-height:1.1}
+.total span{font-size:14px;opacity:.8}
+h2{font-size:16px;margin:24px 0 10px;display:flex;justify-content:space-between;align-items:center}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.prod{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 12px;text-align:left;color:var(--ink);font:inherit;min-height:76px;cursor:pointer}
+.prod:active{transform:scale(.97)}
+.prod .n{font-weight:700;display:block}
+.prod .p{color:var(--mute);font-size:14px}
+.prod .c{position:absolute;top:8px;right:8px;background:var(--ok);color:#fff;border-radius:999px;font-size:13px;font-weight:700;min-width:24px;height:24px;display:grid;place-items:center;padding:0 6px}
+.prod .x{position:absolute;top:6px;right:6px;background:var(--bad);color:#fff;border:0;border-radius:999px;width:28px;height:28px;font-size:16px}
+.alert{background:var(--card);border:1px solid var(--bad);color:var(--bad);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px;display:none}
+.prod .s{display:block;font-size:13px;margin-top:6px;color:var(--ok);font-weight:700}
+.prod.low .s{color:var(--bad)}
+.prod.low{border-color:var(--bad)}
+.rs{display:flex;gap:6px;margin-top:8px}
+.rs span{flex:1;text-align:center;background:var(--ink);color:var(--bg);border-radius:8px;padding:5px 0;font-size:13px;font-weight:700}
+.add input.qt{flex:0 0 70px}
+.debt{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.debt .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.debt .h b{color:var(--bad);white-space:nowrap}
+.debt small{color:var(--mute)}
+.pay{display:flex;gap:8px;margin-top:10px}
+.pay input{flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.pay button{border:0;border-radius:10px;padding:0 12px;font:inherit;font-weight:700;cursor:pointer;background:var(--ok);color:#fff;min-height:44px}
+.pay button.all{background:var(--ink);color:var(--bg)}
+.dt{color:var(--bad);font-weight:700}
+.link{background:none;border:0;color:var(--mute);font:inherit;font-size:14px;text-decoration:underline;padding:6px 0;cursor:pointer}
+.add{display:flex;gap:8px;margin-top:12px}
+.add input{flex:1;min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit}
+.add input.pr{flex:0 0 96px}
+.btn{width:100%;margin-top:8px;padding:13px;border:0;border-radius:12px;background:var(--ink);color:var(--bg);font:inherit;font-weight:700;cursor:pointer}
+.row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.row small{color:var(--mute)}
+.row button{background:none;border:0;color:var(--bad);font:inherit;font-size:14px;cursor:pointer;padding:6px}
+.empty{color:var(--mute);padding:8px 0}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+footer{margin-top:28px;text-align:center;color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><span id="date"></span><span>Wanasci Global</span></div>
+  <h1>Ma boutique</h1>
+  <div class="total"><small>Total encaissé aujourd'hui</small><b id="total">0</b> <span>FC</span><br><span id="count"></span></div>
+
+  <div class="alert" id="alert"></div>
+  <h2>Touche un produit pour noter une vente <button class="link" id="edit">Modifier</button></h2>
+  <div class="grid" id="grid"></div>
+
+  <div class="add">
+    <input id="nm" placeholder="Nom du produit" autocomplete="off">
+    <input id="pr" class="pr" placeholder="Prix FC" inputmode="numeric" autocomplete="off">
+    <input id="qt" class="qt" placeholder="Stock" inputmode="numeric" autocomplete="off">
+  </div>
+  <button class="btn" id="addBtn">Ajouter le produit</button>
+
+  <h2>Dettes clients <span class="dt" id="dtotal"></span></h2>
+  <div class="add">
+    <input id="dn" placeholder="Nom du client" autocomplete="off">
+    <input id="da" class="pr" placeholder="Montant FC" inputmode="numeric" autocomplete="off">
+  </div>
+  <button class="btn" id="dBtn">Noter la dette</button>
+  <div id="dlist" style="margin-top:12px"></div>
+
+  <h2>Ventes notées</h2>
+  <div id="log"></div>
+  <footer>Les données restent sur ce téléphone.</footer>
+</main>
+<script>
+(function(){
+  var KEY="wanasci-ventes-v1", LOW=5, st={products:[],sales:[]}, editing=false;
+  function load(){try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&d.products&&d.sales)st=d;}}catch(e){}
+    if(!st.products.length&&!st.sales.length){st.products=[{id:1,name:"Sucre 1 kg",price:3000,qty:20},{id:2,name:"Savon",price:1500,qty:15},{id:3,name:"Eau 1,5 L",price:2000,qty:24},{id:4,name:"Pain",price:500,qty:30}];}}
+  function fix(){if(!st.debts)st.debts=[];st.products.forEach(function(p){if(typeof p.qty!=="number")p.qty=0;});}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}}
+  function day(t){var d=new Date(t);return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
+  function fmt(n){return Number(n).toLocaleString("fr-FR");}
+  function today(){var k=day(Date.now());return st.sales.filter(function(s){return day(s.ts)===k;});}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function bal(c){return c.log.reduce(function(a,e){return a+(e.t==="+"?e.a:-e.a);},0);}
+  function renderDebts(){
+    var list=st.debts.map(function(c){return{c:c,b:bal(c)};}).filter(function(x){return x.b>0;}).sort(function(a,b){return b.b-a.b;});
+    var tot=list.reduce(function(a,x){return a+x.b;},0);
+    document.getElementById("dtotal").textContent=tot?fmt(tot)+" FC":"";
+    document.getElementById("dlist").innerHTML=list.length?list.map(function(x){
+      var last=x.c.log[x.c.log.length-1];
+      return '<div class="debt"><div class="h"><span>'+esc(x.c.name)+'<br><small>Dernier mouvement : '+new Date(last.ts).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})+'</small></span><b>'+fmt(x.b)+' FC</b></div>'+
+        '<div class="pay"><input id="pay-'+x.c.id+'" placeholder="Payé FC" inputmode="numeric" autocomplete="off"><button data-pay="'+x.c.id+'">Encaisser</button><button class="all" data-all="'+x.c.id+'">Tout payé</button></div></div>';
+    }).join(""):'<div class="empty">Aucune dette en cours.</div>';
+  }
+  function render(){
+    var t=today(), sum=t.reduce(function(a,s){return a+s.price;},0);
+    document.getElementById("total").textContent=fmt(sum);
+    document.getElementById("count").textContent=t.length+(t.length>1?" ventes":" vente");
+    document.getElementById("date").textContent=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+    document.getElementById("edit").textContent=editing?"Terminé":"Modifier";
+    var g=document.getElementById("grid");
+    g.innerHTML=st.products.map(function(p){
+      var c=t.filter(function(s){return s.pid===p.id;}).length, low=p.qty<=LOW;
+      return '<button class="prod'+(low?' low':'')+'" data-id="'+p.id+'"><span class="n">'+esc(p.name)+'</span><span class="p">'+fmt(p.price)+' FC</span>'+
+        '<span class="s">'+(p.qty<=0?'Épuisé':'Stock : '+p.qty)+'</span>'+
+        (editing?'<span class="x" data-del="'+p.id+'" role="button" aria-label="Supprimer">×</span><span class="rs"><span data-rs="'+p.id+'" data-n="1">+1</span><span data-rs="'+p.id+'" data-n="10">+10</span></span>':(c?'<span class="c">'+c+'</span>':''))+'</button>';
+    }).join("")||'<div class="empty">Ajoute ton premier produit ci-dessous.</div>';
+    var lows=st.products.filter(function(p){return p.qty<=LOW;});
+    var al=document.getElementById("alert");
+    al.style.display=lows.length?"block":"none";
+    al.textContent=lows.length?"À racheter : "+lows.map(function(p){return p.name+" ("+p.qty+")";}).join(", "):"";
+    renderDebts();
+    var l=document.getElementById("log");
+    l.innerHTML=t.length?t.slice().reverse().map(function(s){
+      return '<div class="row"><div>'+esc(s.name)+'<br><small>'+new Date(s.ts).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})+' · '+fmt(s.price)+' FC</small></div><button data-undo="'+s.id+'">Annuler</button></div>';
+    }).join(""):'<div class="empty">Aucune vente pour le moment.</div>';
+  }
+  document.getElementById("grid").addEventListener("click",function(e){
+    var r=e.target.closest("[data-rs]");
+    if(r){var rp=st.products.find(function(x){return x.id===+r.getAttribute("data-rs");});if(rp){rp.qty+=+r.getAttribute("data-n");save();render();}return;}
+    var d=e.target.closest("[data-del]");
+    if(d){var id=+d.getAttribute("data-del");st.products=st.products.filter(function(p){return p.id!==id;});save();render();return;}
+    var b=e.target.closest(".prod"); if(!b||editing)return;
+    var p=st.products.find(function(x){return x.id===+b.getAttribute("data-id");}); if(!p)return;
+    if(p.qty>0)p.qty-=1;
+    st.sales.push({id:Date.now()+Math.random(),pid:p.id,name:p.name,price:p.price,ts:Date.now()});
+    save();render();
+    if(navigator.vibrate){try{navigator.vibrate(15);}catch(_){}}
+  });
+  document.getElementById("log").addEventListener("click",function(e){
+    var u=e.target.closest("[data-undo]"); if(!u)return;
+    var id=+u.getAttribute("data-undo");
+    var sl=st.sales.find(function(s){return s.id===id;});
+    if(sl){var sp=st.products.find(function(x){return x.id===sl.pid;});if(sp)sp.qty+=1;}
+    st.sales=st.sales.filter(function(s){return s.id!==id;});save();render();
+  });
+  document.getElementById("dBtn").addEventListener("click",function(){
+    var n=document.getElementById("dn"),a=document.getElementById("da");
+    var name=n.value.trim(),amt=parseInt(a.value.replace(/\s/g,""),10);
+    if(!name||!(amt>0)){(name?a:n).focus();return;}
+    var c=st.debts.find(function(x){return x.name.toLowerCase()===name.toLowerCase();});
+    if(!c){c={id:Date.now(),name:name,log:[]};st.debts.push(c);}
+    c.log.push({t:"+",a:amt,ts:Date.now()});
+    n.value="";a.value="";save();render();
+  });
+  document.getElementById("dlist").addEventListener("click",function(e){
+    var b=e.target.closest("[data-pay],[data-all]"); if(!b)return;
+    var all=b.hasAttribute("data-all"), id=+b.getAttribute(all?"data-all":"data-pay");
+    var c=st.debts.find(function(x){return x.id===id;}); if(!c)return;
+    var due=bal(c), amt=all?due:parseInt((document.getElementById("pay-"+id).value||"").replace(/\s/g,""),10);
+    if(!(amt>0)){document.getElementById("pay-"+id).focus();return;}
+    c.log.push({t:"-",a:Math.min(amt,due),ts:Date.now()});
+    save();render();
+  });
+  document.getElementById("edit").addEventListener("click",function(){editing=!editing;render();});
+  document.getElementById("addBtn").addEventListener("click",function(){
+    var n=document.getElementById("nm"),p=document.getElementById("pr"),q=document.getElementById("qt");
+    var name=n.value.trim(),price=parseInt(p.value.replace(/\s/g,""),10);
+    if(!name||!(price>0)){(name?p:n).focus();return;}
+    st.products.push({id:Date.now(),name:name,price:price,qty:Math.max(0,parseInt(q.value,10)||0)});
+    n.value="";p.value="";q.value="";save();render();
+  });
+  fix();load();fix();render();
+  try{if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){navigator.serviceWorker.register("sw.js");}}catch(e){}
+})();
+</script>
+</body>
+</html>
