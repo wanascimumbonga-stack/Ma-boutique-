@@ -1,7 +1,7 @@
 {
  "name": "Ma boutique – Wanasci Global",
  "short_name": "Ma boutique",
- "description": "Ventes, stock et dettes clients pour petits commerçants",
+ "description": "Vitrine de vente en ligne : habits, chaussures, sacs et beauté",
  "lang": "fr",
  "start_url": "./index.html",
  "scope": "./",
