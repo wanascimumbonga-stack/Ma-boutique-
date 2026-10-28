@@ -1,8 +1,6 @@
-/* Réglages de la vitrine. Laisse SUPABASE_URL et SUPABASE_KEY vides pour le mode démonstration.
-   SUPABASE_KEY : la clé PUBLIQUE (« anon » ou « publishable »). Jamais la clé « service_role » ou « secret ». */
 window.MB_CONFIG = Object.assign({
-  SUPABASE_URL: "",
-  SUPABASE_KEY: "",
+  SUPABASE_URL: "https://drzjzdbgasxtwclgxfhh.supabase.co",
+  SUPABASE_KEY: "sb_publishable_9bnx_ZD8F8bBZF9-ANAppg_dGLhEPs5",
   NUVALK_URL: "",
   ADMIN_WHATSAPP: ""
 }, window.MB_CONFIG || {});
