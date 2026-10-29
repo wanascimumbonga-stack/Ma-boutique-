@@ -146,7 +146,7 @@ var BASE=String(CFG.SUPABASE_URL||"").replace(/\/+$/,"");
 var PAGE=24, MAXPH=4;
 var $=function(i){return document.getElementById(i);};
 var view=$("view");
-var CATS=[["vetements","Vêtements"],["chaussures","Chaussures"],["sacs","Sacs et accessoires"],["beaute","Beauté et coiffure"]];
+var CATS=[["vetements","Vêtements"],["chaussures","Chaussures"],["sacs","Sacs et accessoires"],["beaute","Beauté et coiffure"],["livres","Livres et formations"],["autres","Autres"]];
 function catName(k){for(var i=0;i<CATS.length;i++)if(CATS[i][0]===k)return CATS[i][1];return "";}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function safeUrl(u){u=String(u||"");return /^(https:\/\/|http:\/\/localhost|data:image\/)/i.test(u)?u:"";}
