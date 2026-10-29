@@ -186,6 +186,9 @@ function friendly(e){
 /* ---------- Session ---------- */
 var SKEY="mb-session", session=null;
 try{session=JSON.parse(localStorage.getItem(SKEY)||"null");}catch(e){}
+if(session&&((REMOTE&&(session.demo||!session.access_token))||(!REMOTE&&!session.demo))){session=null;try{localStorage.removeItem(SKEY);}catch(e){}}
+/* un compte de l'ancien mode démonstration ne doit jamais servir avec la vraie base (et inversement) */
+if(session&&(REMOTE?(session.demo||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test((session.user&&session.user.id)||"")):!session.demo)){session=null;try{localStorage.removeItem(SKEY);}catch(e){}}
 function saveSession(s){session=s;try{if(s)localStorage.setItem(SKEY,JSON.stringify(s));else localStorage.removeItem(SKEY);}catch(e){}}
 var cur=session&&session.user?{id:session.user.id,email:session.user.email,profile:null}:null;
 
