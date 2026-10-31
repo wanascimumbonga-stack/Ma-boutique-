@@ -111,7 +111,7 @@ textarea{min-height:96px;resize:vertical}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 footer{margin:32px 0 0;text-align:center;color:var(--mute);font-size:13px}
 
-.cta{position:absolute;right:8px;bottom:8px;background:var(--ink);color:var(--bg);font-weight:700;font-size:13px;border-radius:999px;padding:3px 10px}
+.cta{display:block;text-align:center;margin-top:8px;background:var(--ink);color:var(--bg);font-weight:700;font-size:14px;border-radius:10px;padding:8px 6px}
 .order{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:2px solid var(--accent);padding:8px 16px calc(10px + env(safe-area-inset-bottom,0px))}
 .order .in{max-width:720px;margin:0 auto}
 .order .ot{font-weight:700;font-size:14px;display:flex;justify-content:space-between;gap:8px}
@@ -126,6 +126,9 @@ footer{margin:32px 0 0;text-align:center;color:var(--mute);font-size:13px}
 .chart{width:100%;height:auto;display:block;color:var(--ink);margin-top:8px}
 .chart text{fill:currentColor;font-family:inherit}
 .chart .ax{stroke:var(--line)}
+.vf{display:inline-block;margin-top:4px;font-size:13px;font-weight:700;color:var(--ok)}
+.une{position:absolute;left:8px;top:8px;background:var(--ink);color:var(--bg);font-weight:700;font-size:12px;border-radius:999px;padding:2px 10px}
+.tag{display:inline-block;font-size:12px;border-radius:6px;padding:1px 8px;background:var(--accent);color:var(--accent-ink);font-weight:700}
 </style>
 </head>
 <body>
@@ -172,7 +175,8 @@ function orderMsg(p){
   var s=p.seller||{};
   return "Bonjour"+(s.name?" "+s.name:"")+", je suis intéressé(e) par « "+p.title+" » ("+money(p)+") vu sur Ma boutique. Est-il encore disponible ?\n"+productLink(p.id);
 }
-function sellerLine(s){s=s||{};return [s.name,s.city].filter(Boolean).join(" · ");}
+function sellerLine(s){s=s||{};return [(s.verified?"✔ ":"")+(s.name||""),s.city].filter(Boolean).join(" · ");}
+function isFeat(p){return !!(p&&p.featured_until&&new Date(p.featured_until).getTime()>Date.now());}
 function friendly(e){
   var m=(e&&e.message)||"";
   if(/Invalid login credentials/i.test(m))return "E-mail ou mot de passe incorrect.";
@@ -224,17 +228,21 @@ async function http(method,url,body,extra,raw){
   var ct=r.headers.get("content-type")||"";
   return ct.indexOf("json")>=0?r.json():null;
 }
-var SEL="select=*,profiles(id,name,whatsapp,nuvalk,city)";
-function norm(r){var s=r.profiles||{};return{id:r.id,title:r.title,description:r.description||"",price:Number(r.price),currency:r.currency||"FC",category:r.category,sizes:r.sizes||"",photos:r.photos||[],status:r.status,created_at:r.created_at,seller:{id:r.seller_id||s.id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||""}};}
+var SEL="select=*,profiles(id,name,whatsapp,nuvalk,city,verified)";
+function norm(r){var s=r.profiles||{};return{id:r.id,title:r.title,description:r.description||"",price:Number(r.price),currency:r.currency||"FC",category:r.category,sizes:r.sizes||"",photos:r.photos||[],status:r.status,created_at:r.created_at,featured_until:r.featured_until||null,seller:{id:r.seller_id||s.id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",verified:!!s.verified}};}
 function pathOf(url){var m=String(url).split("/storage/v1/object/public/photos/");return m.length===2?m[1]:"";}
 var Remote={
   async list(o){
-    var q="products?"+SEL+"&status=eq.active&order=created_at.desc&limit="+(PAGE+1)+"&offset="+(o.offset||0);
-    if(o.cat)q+="&category=eq."+encodeURIComponent(o.cat);
-    var s=(o.q||"").replace(/[,()*%\\:]/g," ").trim();
-    if(s){var pat=encodeURIComponent("*"+s+"*");q+="&or=(title.ilike."+pat+",description.ilike."+pat+")";}
-    var rows=await http("GET",BASE+"/rest/v1/"+q);
-    return{items:rows.slice(0,PAGE).map(norm),more:rows.length>PAGE};
+    var f="";
+    if(o.cat)f+="&category=eq."+encodeURIComponent(o.cat);
+    var q0=(o.q||"").replace(/[,()*%\\:]/g," ").trim();
+    if(q0){var pat=encodeURIComponent("*"+q0+"*");f+="&or=(title.ilike."+pat+",description.ilike."+pat+")";}
+    var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&status=eq.active"+f+"&order=created_at.desc&limit="+(PAGE+1)+"&offset="+(o.offset||0));
+    var feat=[];
+    if(!(o.offset>0)){
+      try{var fr=await http("GET",BASE+"/rest/v1/products?"+SEL+"&status=eq.active&featured_until=gt."+encodeURIComponent(new Date().toISOString())+f+"&order=featured_until.desc&limit=6");feat=(fr||[]).map(norm).filter(isFeat);}catch(e){}
+    }
+    return{items:rows.slice(0,PAGE).map(norm),more:rows.length>PAGE,used:Math.min(rows.length,PAGE),feat:feat};
   },
   async get(id){var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&id=eq."+encodeURIComponent(id));return rows&&rows[0]?norm(rows[0]):null;},
   async mine(){var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&seller_id=eq."+encodeURIComponent(cur.id)+"&order=created_at.desc");return rows.map(norm);},
@@ -245,9 +253,11 @@ var Remote={
   async adminData(){
     var st=await http("POST",BASE+"/rest/v1/rpc/admin_stats",{});
     var pr=await http("GET",BASE+"/rest/v1/profiles?select=*&order=created_at.desc&limit=500");
-    var pd=await http("GET",BASE+"/rest/v1/products?select=id,seller_id,title,price,currency,category,status,photos,created_at&order=created_at.desc&limit=500");
+    var pd=await http("GET",BASE+"/rest/v1/products?select=id,seller_id,title,price,currency,category,status,photos,created_at,featured_until&order=created_at.desc&limit=500");
     return{stats:st||{},profiles:pr||[],products:pd||[]};
   },
+  async adminVerify(uid,val){await http("POST",BASE+"/rest/v1/rpc/admin_set_verified",{p_user:uid,p_value:!!val});},
+  async adminFeature(pid,days){await http("POST",BASE+"/rest/v1/rpc/admin_set_featured",{p_product:pid,p_days:days});},
   track(kind,pid,dev){
     try{
       var h={apikey:CFG.SUPABASE_KEY,"Content-Type":"application/json"};
@@ -311,7 +321,7 @@ function dload(){
   return d;
 }
 function dsave(d){try{localStorage.setItem(DKEY,JSON.stringify(d));}catch(e){throw new Error("Le téléphone n'a plus de place pour la démonstration.");}}
-function dnorm(d,p){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];var s=u?u.profile:{};return{id:p.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos.slice(),status:p.status,created_at:p.created_at,seller:{id:p.seller_id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||""}};}
+function dnorm(d,p){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];var s=u?u.profile:{};return{id:p.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos.slice(),status:p.status,created_at:p.created_at,featured_until:p.featured_until||null,seller:{id:p.seller_id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",verified:!!s.verified}};}
 function byNew(a,b){return a.created_at<b.created_at?1:-1;}
 function b2d(blob){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result);};r.onerror=function(){rej(new Error("Photo illisible."));};r.readAsDataURL(blob);});}
 function ymd(a){return a.getFullYear()+"-"+("0"+(a.getMonth()+1)).slice(-2)+"-"+("0"+a.getDate()).slice(-2);}
@@ -339,7 +349,8 @@ var Demo={
   async list(o){
     var d=dload(),q=(o.q||"").toLowerCase().trim(),off=o.offset||0;
     var rows=d.products.filter(function(p){return p.status==="active"&&(!o.cat||p.category===o.cat)&&(!q||(p.title+" "+p.description).toLowerCase().indexOf(q)>=0);}).sort(byNew).map(function(p){return dnorm(d,p);});
-    return{items:rows.slice(off,off+PAGE),more:rows.length>off+PAGE};
+    var feat=off>0?[]:rows.filter(isFeat).sort(function(a,b){return a.featured_until<b.featured_until?1:-1;}).slice(0,6);
+    return{items:rows.slice(off,off+PAGE),more:rows.length>off+PAGE,used:rows.slice(off,off+PAGE).length,feat:feat};
   },
   async get(id){var d=dload(),p=d.products.filter(function(x){return x.id===id;})[0];return p?dnorm(d,p):null;},
   async mine(){var d=dload();return d.products.filter(function(p){return p.seller_id===cur.id;}).sort(byNew).map(function(p){return dnorm(d,p);});},
@@ -352,9 +363,11 @@ var Demo={
     return{
       stats:dstats(d),
       profiles:d.users.map(function(u){return Object.assign({id:u.id,created_at:u.created||new Date().toISOString()},u.profile);}),
-      products:d.products.map(function(p){return{id:p.id,seller_id:p.seller_id,title:p.title,price:p.price,currency:p.currency,category:p.category,status:p.status,photos:p.photos,created_at:p.created_at};})
+      products:d.products.map(function(p){return{id:p.id,seller_id:p.seller_id,title:p.title,price:p.price,currency:p.currency,category:p.category,status:p.status,photos:p.photos,created_at:p.created_at,featured_until:p.featured_until||null};})
     };
   },
+  async adminVerify(uid,val){var d=dload(),u=d.users.filter(function(x){return x.id===uid;})[0];if(u){u.profile.verified=!!val;dsave(d);}},
+  async adminFeature(pid,days){var d=dload(),p=d.products.filter(function(x){return x.id===pid;})[0];if(p){p.featured_until=days>0?new Date(Date.now()+Math.min(days,365)*864e5).toISOString():null;dsave(d);}},
   track(kind,pid,dev){
     try{var d=dload();d.events=d.events||[];d.events.push({kind:kind,product_id:pid||null,device:dev,created_at:new Date().toISOString()});if(d.events.length>800)d.events=d.events.slice(-800);dsave(d);}catch(e){}
   },
@@ -419,10 +432,10 @@ function loading(){return '<div class="empty">Chargement…</div>';}
 function notFound(){return '<div class="empty"><h1>Produit introuvable</h1><p>Il a peut-être été vendu ou retiré.</p><a class="btn" href="#/" style="max-width:260px;margin:12px auto 0">Voir les produits</a></div>';}
 
 /* ---------- Accueil ---------- */
-var S={q:"",cat:"",items:[],more:false,loaded:false,loading:false,err:"",stale:false,scroll:0,active:false};
+var S={q:"",cat:"",items:[],roff:0,more:false,loaded:false,loading:false,err:"",stale:false,scroll:0,active:false};
 function cardHtml(p){
   var im=safeUrl(p.photos&&p.photos[0]);
-  return '<a class="card" href="#/p/'+encodeURIComponent(p.id)+'"><div class="ph">'+(im?'<img loading="lazy" decoding="async" src="'+im+'" alt="'+esc(p.title)+'">':'')+'<span class="price">'+esc(money(p))+'</span><span class="cta">Commander</span></div><div class="ct"><b>'+esc(p.title)+'</b><small>'+esc(sellerLine(p.seller))+'</small></div></a>';
+  return '<a class="card" href="#/p/'+encodeURIComponent(p.id)+'"><div class="ph">'+(im?'<img loading="lazy" decoding="async" src="'+im+'" alt="'+esc(p.title)+'">':'')+(isFeat(p)?'<span class="une">À la une</span>':'')+'<span class="price">'+esc(money(p))+'</span></div><div class="ct"><b>'+esc(p.title)+'</b><small>'+esc(sellerLine(p.seller))+'</small><span class="cta">Commander</span></div></a>';
 }
 function paintChips(){
   var h='<button class="chip" data-cat="" aria-pressed="'+(S.cat===""?"true":"false")+'">Tout</button>';
@@ -446,13 +459,15 @@ function paintGrid(){
 async function loadList(reset){
   if(S.loading)return;
   S.loading=true;S.err="";S.stale=false;
-  if(reset){S.items=[];S.more=false;}
+  if(reset){S.items=[];S.more=false;S.roff=0;}
   paintGrid();
-  var off=reset?0:S.items.length,keep=(S.q===""&&S.cat==="");
+  var off=reset?0:S.roff,keep=(S.q===""&&S.cat==="");
   try{
     var r=await API.list({q:S.q,cat:S.cat,offset:off});
-    S.items=reset?r.items:S.items.concat(r.items);S.more=r.more;S.loaded=true;
-    if(keep&&off===0&&REMOTE){try{localStorage.setItem("mb-last",JSON.stringify(r.items));}catch(e){}}
+    var seen={};(reset?(r.feat||[]):S.items).forEach(function(x){seen[x.id]=1;});
+    var add=r.items.filter(function(x){return !seen[x.id];});
+    S.items=reset?(r.feat||[]).concat(add):S.items.concat(add);S.roff+=(r.used!=null?r.used:r.items.length);S.more=r.more;S.loaded=true;
+    if(keep&&off===0&&REMOTE){try{localStorage.setItem("mb-last",JSON.stringify(S.items));}catch(e){}}
   }catch(e){
     S.err=friendly(e);
     if(!S.items.length&&keep&&REMOTE){try{var c=JSON.parse(localStorage.getItem("mb-last")||"null");if(c&&c.length){S.items=c;S.stale=true;S.err="";}}catch(_){}}
@@ -481,7 +496,7 @@ async function showDetail(id,rid){
   if(ph.length>1)h+='<div class="gcount" id="gcount">1 / '+ph.length+'</div>';
   h+='<h1 tabindex="-1" id="ptitle">'+esc(p.title)+'</h1><div class="pprice">'+esc(money(p))+'</div><p class="meta">'+esc(catName(p.category))+(p.sizes?' · Tailles : '+esc(p.sizes):'')+(p.status==="sold"?' · <b>Vendu</b>':'')+'</p>';
   if(p.description)h+='<p class="desc">'+esc(p.description)+'</p>';
-  h+='<div class="seller"><b>'+esc(s.name||"Vendeur")+'</b>'+(s.city?'<div class="meta">'+esc(s.city)+'</div>':'')+'</div>';
+  h+='<div class="seller"><b>'+esc(s.name||"Vendeur")+'</b>'+(s.verified?'<div class="vf">✔ Vendeur vérifié</div>':'')+(s.city?'<div class="meta">'+esc(s.city)+'</div>':'')+'</div>';
   if(own){h+='<a class="btn alt" href="#/modifier/'+encodeURIComponent(p.id)+'">Modifier mon produit</a>';}
   else if(p.status==="sold"){h+='<p class="note">Ce produit est vendu.</p>';}
   else{
@@ -574,7 +589,7 @@ async function showAccount(rid){
   h+='<h2>Mes produits ('+list.length+')</h2>';
   h+=list.length?list.map(function(p){
     var im=safeUrl(p.photos&&p.photos[0]);
-    return '<div class="mine"><a href="#/p/'+encodeURIComponent(p.id)+'">'+(im?'<img src="'+im+'" alt="">':'<div class="thumb"></div>')+'</a><div class="t"><b>'+esc(p.title)+'</b><div class="meta">'+esc(money(p))+' · <span class="st'+(p.status==="sold"?' sold':'')+'">'+(p.status==="sold"?"Vendu":"En vente")+'</span></div><div class="acts"><a class="btn alt sm" href="#/modifier/'+encodeURIComponent(p.id)+'">Modifier</a><button class="btn alt sm" data-tg="'+esc(p.id)+'" data-s="'+p.status+'">'+(p.status==="sold"?"Remettre en vente":"Marquer vendu")+'</button><button class="btn alt sm" data-rm="'+esc(p.id)+'">Supprimer</button></div></div></div>';
+    return '<div class="mine"><a href="#/p/'+encodeURIComponent(p.id)+'">'+(im?'<img src="'+im+'" alt="">':'<div class="thumb"></div>')+'</a><div class="t"><b>'+esc(p.title)+'</b><div class="meta">'+esc(money(p))+' · <span class="st'+(p.status==="sold"?' sold':'')+'">'+(p.status==="sold"?"Vendu":"En vente")+'</span>'+(isFeat(p)?' <span class="tag">À la une</span>':'')+'</div><div class="acts"><a class="btn alt sm" href="#/modifier/'+encodeURIComponent(p.id)+'">Modifier</a><button class="btn alt sm" data-tg="'+esc(p.id)+'" data-s="'+p.status+'">'+(p.status==="sold"?"Remettre en vente":"Marquer vendu")+'</button><button class="btn alt sm" data-rm="'+esc(p.id)+'">Supprimer</button></div></div></div>';
   }).join(""):'<p class="note">Tu n\'as pas encore de produit en vente.</p>';
   h+='<h2>Mon profil de vendeur</h2><form id="pf" novalidate>'+field("pn","Nom affiché","text",'maxlength="60" value="'+esc(pr.name||"")+'"')+field("pw","Numéro WhatsApp","tel",'inputmode="tel" maxlength="20" value="'+esc(pr.whatsapp||"")+'" placeholder="+243 812 345 678"',"Avec l'indicatif du pays.")+field("pv","Nom d'utilisateur Nuvalk","text",'autocapitalize="none" maxlength="40" value="'+esc(pr.nuvalk||"")+'" placeholder="@toi"')+field("pc","Ville ou commune","text",'maxlength="60" value="'+esc(pr.city||"")+'"')+'<div class="err" id="perr" role="alert"></div><button class="btn alt" type="submit">Enregistrer mon profil</button></form>';
   h+='<h2>Outils</h2>'+(adm?'<a class="btn" href="#/admin">Espace propriétaire</a>':'')+'<a class="btn alt" href="cahier.html">Mon cahier : ventes, stock, dettes</a><button class="btn alt" id="out">Se déconnecter</button>';
@@ -691,7 +706,7 @@ function chartSvg(daily){
   return '<svg class="chart" viewBox="0 0 320 '+(top+H+24)+'" role="img" aria-label="'+esc("Visiteurs et commandes lancées sur 7 jours. "+alt.join(". "))+'">'+g+'</svg>'+
     '<div class="lg"><span><i style="background:var(--c1)"></i>Visiteurs</span><span><i style="background:var(--c2)"></i>Commandes lancées</span></div>';
 }
-async function showAdmin(rid){
+async function showAdmin(rid,keep){
   if(!cur){location.hash="#/compte";return;}
   view.innerHTML=loading();
   var ok=false;try{ok=await API.isAdmin();}catch(e){}
@@ -722,19 +737,22 @@ async function showAdmin(rid){
   h+=d.profiles.slice(0,100).map(function(x){
     var n=per[x.id]||0,num=waNum(x.whatsapp);
     var contact=[num?'<a target="_blank" rel="noopener" href="https://wa.me/'+num+'">WhatsApp +'+esc(num)+'</a>':'',x.nuvalk?'Nuvalk @'+esc(nvName(x.nuvalk)):''].filter(Boolean).join(" · ");
-    return '<div class="hd"><div class="t"><span>'+esc(x.name||"Vendeur")+'</span><span>'+n+(n>1?' produits':' produit')+'</span></div><small>'+esc([x.city,'inscrit le '+dstr(x.created_at)].filter(Boolean).join(" · "))+'</small><small>'+(contact||'Aucun contact')+'</small></div>';
+    return '<div class="hd"><div class="t"><span>'+esc((x.verified?"✔ ":"")+(x.name||"Vendeur"))+'</span><span>'+n+(n>1?' produits':' produit')+'</span></div><small>'+esc([x.city,'inscrit le '+dstr(x.created_at)].filter(Boolean).join(" · "))+'</small><small>'+(contact||'Aucun contact')+'</small><div class="acts"><button class="btn alt sm" data-vf="'+esc(x.id)+'" data-v="'+(x.verified?'0':'1')+'">'+(x.verified?'✔ Retirer le badge':'Vérifier ce vendeur')+'</button></div></div>';
   }).join("")||'<p class="note">Aucun vendeur pour le moment.</p>';
   h+='<h2>Tous les produits ('+d.products.length+')</h2>';
   h+=d.products.slice(0,100).map(function(x){
     var im=safeUrl(x.photos&&x.photos[0]),s=prof[x.seller_id]||{};
-    return '<div class="mine"><a href="#/p/'+encodeURIComponent(x.id)+'">'+(im?'<img src="'+im+'" alt="">':'<div class="thumb"></div>')+'</a><div class="t"><b>'+esc(x.title)+'</b><div class="meta">'+esc(money(x))+' · <span class="st'+(x.status==="sold"?' sold':'')+'">'+(x.status==="sold"?"Vendu":"En vente")+'</span></div><div class="meta">'+esc(s.name||"Vendeur")+'</div><div class="acts"><a class="btn alt sm" href="#/p/'+encodeURIComponent(x.id)+'">Voir</a><button class="btn alt sm" data-arm="'+esc(x.id)+'">Retirer</button></div></div></div>';
+    return '<div class="mine"><a href="#/p/'+encodeURIComponent(x.id)+'">'+(im?'<img src="'+im+'" alt="">':'<div class="thumb"></div>')+'</a><div class="t"><b>'+esc(x.title)+'</b><div class="meta">'+esc(money(x))+' · <span class="st'+(x.status==="sold"?' sold':'')+'">'+(x.status==="sold"?"Vendu":"En vente")+'</span></div><div class="meta">'+esc(s.name||"Vendeur")+(isFeat(x)?' · <span class="tag">À la une jusqu\'au '+esc(dstr(x.featured_until))+'</span>':'')+'</div><div class="acts"><a class="btn alt sm" href="#/p/'+encodeURIComponent(x.id)+'">Voir</a><button class="btn alt sm" data-ft="'+esc(x.id)+'" data-d="7">À la une 7 j</button><button class="btn alt sm" data-ft="'+esc(x.id)+'" data-d="30">30 j</button>'+(isFeat(x)?'<button class="btn alt sm" data-ft="'+esc(x.id)+'" data-d="0">Retirer de la une</button>':'')+'<button class="btn alt sm" data-arm="'+esc(x.id)+'">Retirer</button></div></div></div>';
   }).join("")||'<p class="note">Aucun produit pour le moment.</p>';
   if(d.products.length>100||d.profiles.length>100)h+='<p class="note">Les 100 plus récents sont affichés.</p>';
   h+='<p class="note">Les e-mails des vendeurs se trouvent dans Supabase : menu « Authentication », puis « Users ».</p>';
   view.innerHTML=h;
-  $("ptitle").focus({preventScroll:true});
+  if(keep)window.scrollTo(0,keep);else $("ptitle").focus({preventScroll:true});
   $("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/compte";};
   view.onclick=async function(e){
+    var vf=e.target.closest("[data-vf]"),ft=e.target.closest("[data-ft]");
+    if(vf){vf.disabled=true;try{await API.adminVerify(vf.getAttribute("data-vf"),vf.getAttribute("data-v")==="1");S.loaded=false;toast(vf.getAttribute("data-v")==="1"?"Badge accordé.":"Badge retiré.");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));vf.disabled=false;}return;}
+    if(ft){ft.disabled=true;var dd=+ft.getAttribute("data-d");try{await API.adminFeature(ft.getAttribute("data-ft"),dd);S.loaded=false;toast(dd>0?"Mis à la une pour "+dd+" jours.":"Retiré de la une.");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));ft.disabled=false;}return;}
     var rm=e.target.closest("[data-arm]");if(!rm)return;
     if(rm.getAttribute("data-c")!=="1"){rm.setAttribute("data-c","1");rm.textContent="Confirmer";rm.classList.add("bad");setTimeout(function(){if(rm.isConnected){rm.removeAttribute("data-c");rm.textContent="Retirer";rm.classList.remove("bad");}},4000);return;}
     var id=rm.getAttribute("data-arm"),old=d.products.filter(function(x){return x.id===id;})[0];
