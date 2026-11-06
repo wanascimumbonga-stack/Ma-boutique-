@@ -12,9 +12,9 @@
 <link rel="icon" href="logo-192.png">
 <link rel="apple-touch-icon" href="logo-192.png">
 <style>
-:root{--bg:#F5F7FA;--card:#FFFFFF;--ink:#0F2A43;--mute:#5E7388;--line:#DCE4EC;--chip:#E8EDF3;--accent:#FFB703;--accent-ink:#0F2A43;--ok:#14855C;--bad:#C43B3B;--c1:#2E6DA4;--c2:#B87400}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1620;--card:#13242F;--ink:#EAF1F7;--mute:#92A7B8;--line:#24394A;--chip:#1B3042;--ok:#38C48F;--bad:#F07A7A;--c1:#4C94D8;--c2:#C48600}}
-:root[data-theme="dark"]{--bg:#0B1620;--card:#13242F;--ink:#EAF1F7;--mute:#92A7B8;--line:#24394A;--chip:#1B3042;--ok:#38C48F;--bad:#F07A7A;--c1:#4C94D8;--c2:#C48600}
+:root{--bg:#F5F7FA;--card:#FFFFFF;--ink:#0F2A43;--mute:#5E7388;--line:#DCE4EC;--chip:#E8EDF3;--accent:#FFB703;--accent-ink:#0F2A43;--ok:#14855C;--bad:#C43B3B;--c1:#2E6DA4;--c2:#B87400;--bd:#1F6FD6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1620;--card:#13242F;--ink:#EAF1F7;--mute:#92A7B8;--line:#24394A;--chip:#1B3042;--ok:#38C48F;--bad:#F07A7A;--c1:#4C94D8;--c2:#C48600;--bd:#3B8CF0}}
+:root[data-theme="dark"]{--bg:#0B1620;--card:#13242F;--ink:#EAF1F7;--mute:#92A7B8;--line:#24394A;--chip:#1B3042;--ok:#38C48F;--bad:#F07A7A;--c1:#4C94D8;--c2:#C48600;--bd:#3B8CF0}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Trebuchet MS","Segoe UI",system-ui,sans-serif}
@@ -126,7 +126,10 @@ footer{margin:32px 0 0;text-align:center;color:var(--mute);font-size:13px}
 .chart{width:100%;height:auto;display:block;color:var(--ink);margin-top:8px}
 .chart text{fill:currentColor;font-family:inherit}
 .chart .ax{stroke:var(--line)}
-.vf{display:inline-block;margin-top:4px;font-size:13px;font-weight:700;color:var(--ok)}
+.vf{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;font-weight:700;color:var(--ink)}
+.vb{width:1.15em;height:1.15em;vertical-align:-.2em;flex:0 0 auto}
+.vb .s{fill:var(--bd);stroke:var(--bd);stroke-width:1.2;stroke-linejoin:round}
+.vb .c{fill:none;stroke:#fff;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
 .une{position:absolute;left:8px;top:8px;background:var(--ink);color:var(--bg);font-weight:700;font-size:12px;border-radius:999px;padding:2px 10px}
 .tag{display:inline-block;font-size:12px;border-radius:6px;padding:1px 8px;background:var(--accent);color:var(--accent-ink);font-weight:700}
 </style>
@@ -175,7 +178,8 @@ function orderMsg(p){
   var s=p.seller||{};
   return "Bonjour"+(s.name?" "+s.name:"")+", je suis intéressé(e) par « "+p.title+" » ("+money(p)+") vu sur Ma boutique. Est-il encore disponible ?\n"+productLink(p.id);
 }
-function sellerLine(s){s=s||{};return [(s.verified?"✔ ":"")+(s.name||""),s.city].filter(Boolean).join(" · ");}
+var VB='<svg class="vb" viewBox="0 0 24 24" role="img" aria-label="Vendeur vérifié"><title>Vendeur vérifié</title><path class="s" d="M12.00 1.00 L13.81 2.88 L16.21 1.84 L17.17 4.27 L19.78 4.22 L19.73 6.83 L22.16 7.79 L21.12 10.19 L23.00 12.00 L21.12 13.81 L22.16 16.21 L19.73 17.17 L19.78 19.78 L17.17 19.73 L16.21 22.16 L13.81 21.12 L12.00 23.00 L10.19 21.12 L7.79 22.16 L6.83 19.73 L4.22 19.78 L4.27 17.17 L1.84 16.21 L2.88 13.81 L1.00 12.00 L2.88 10.19 L1.84 7.79 L4.27 6.83 L4.22 4.22 L6.83 4.27 L7.79 1.84 L10.19 2.88 Z"/><path class="c" d="M7.4 12.4l3.1 3.1 6.1-6.5"/></svg>';
+function sellerHtml(s){s=s||{};var n=esc(s.name||"")+(s.verified?" "+VB:"");return [n,s.city?esc(s.city):""].filter(Boolean).join(" · ");}
 function isFeat(p){return !!(p&&p.featured_until&&new Date(p.featured_until).getTime()>Date.now());}
 function friendly(e){
   var m=(e&&e.message)||"";
@@ -435,7 +439,7 @@ function notFound(){return '<div class="empty"><h1>Produit introuvable</h1><p>Il
 var S={q:"",cat:"",items:[],roff:0,more:false,loaded:false,loading:false,err:"",stale:false,scroll:0,active:false};
 function cardHtml(p){
   var im=safeUrl(p.photos&&p.photos[0]);
-  return '<a class="card" href="#/p/'+encodeURIComponent(p.id)+'"><div class="ph">'+(im?'<img loading="lazy" decoding="async" src="'+im+'" alt="'+esc(p.title)+'">':'')+(isFeat(p)?'<span class="une">À la une</span>':'')+'<span class="price">'+esc(money(p))+'</span></div><div class="ct"><b>'+esc(p.title)+'</b><small>'+esc(sellerLine(p.seller))+'</small><span class="cta">Commander</span></div></a>';
+  return '<a class="card" href="#/p/'+encodeURIComponent(p.id)+'"><div class="ph">'+(im?'<img loading="lazy" decoding="async" src="'+im+'" alt="'+esc(p.title)+'">':'')+(isFeat(p)?'<span class="une">À la une</span>':'')+'<span class="price">'+esc(money(p))+'</span></div><div class="ct"><b>'+esc(p.title)+'</b><small>'+sellerHtml(p.seller)+'</small><span class="cta">Commander</span></div></a>';
 }
 function paintChips(){
   var h='<button class="chip" data-cat="" aria-pressed="'+(S.cat===""?"true":"false")+'">Tout</button>';
@@ -496,7 +500,7 @@ async function showDetail(id,rid){
   if(ph.length>1)h+='<div class="gcount" id="gcount">1 / '+ph.length+'</div>';
   h+='<h1 tabindex="-1" id="ptitle">'+esc(p.title)+'</h1><div class="pprice">'+esc(money(p))+'</div><p class="meta">'+esc(catName(p.category))+(p.sizes?' · Tailles : '+esc(p.sizes):'')+(p.status==="sold"?' · <b>Vendu</b>':'')+'</p>';
   if(p.description)h+='<p class="desc">'+esc(p.description)+'</p>';
-  h+='<div class="seller"><b>'+esc(s.name||"Vendeur")+'</b>'+(s.verified?'<div class="vf">✔ Vendeur vérifié</div>':'')+(s.city?'<div class="meta">'+esc(s.city)+'</div>':'')+'</div>';
+  h+='<div class="seller"><b>'+esc(s.name||"Vendeur")+'</b>'+(s.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(s.city?'<div class="meta">'+esc(s.city)+'</div>':'')+'</div>';
   if(own){h+='<a class="btn alt" href="#/modifier/'+encodeURIComponent(p.id)+'">Modifier mon produit</a>';}
   else if(p.status==="sold"){h+='<p class="note">Ce produit est vendu.</p>';}
   else{
@@ -585,6 +589,7 @@ async function showAccount(rid){
   if(rid!==routeId)return;
   var pr=cur.profile||{};
   var h='<h1 tabindex="-1" id="ptitle">Bonjour '+esc(pr.name||"")+'</h1>';
+  if(pr.verified)h+='<div class="vf">'+VB+' Ton compte est vérifié</div>';
   h+='<a class="btn" href="#/nouveau">Vendre un produit</a>';
   h+='<h2>Mes produits ('+list.length+')</h2>';
   h+=list.length?list.map(function(p){
@@ -737,7 +742,7 @@ async function showAdmin(rid,keep){
   h+=d.profiles.slice(0,100).map(function(x){
     var n=per[x.id]||0,num=waNum(x.whatsapp);
     var contact=[num?'<a target="_blank" rel="noopener" href="https://wa.me/'+num+'">WhatsApp +'+esc(num)+'</a>':'',x.nuvalk?'Nuvalk @'+esc(nvName(x.nuvalk)):''].filter(Boolean).join(" · ");
-    return '<div class="hd"><div class="t"><span>'+esc((x.verified?"✔ ":"")+(x.name||"Vendeur"))+'</span><span>'+n+(n>1?' produits':' produit')+'</span></div><small>'+esc([x.city,'inscrit le '+dstr(x.created_at)].filter(Boolean).join(" · "))+'</small><small>'+(contact||'Aucun contact')+'</small><div class="acts"><button class="btn alt sm" data-vf="'+esc(x.id)+'" data-v="'+(x.verified?'0':'1')+'">'+(x.verified?'✔ Retirer le badge':'Vérifier ce vendeur')+'</button></div></div>';
+    return '<div class="hd"><div class="t"><span>'+esc(x.name||"Vendeur")+(x.verified?" "+VB:"")+'</span><span>'+n+(n>1?' produits':' produit')+'</span></div><small>'+esc([x.city,'inscrit le '+dstr(x.created_at)].filter(Boolean).join(" · "))+'</small><small>'+(contact||'Aucun contact')+'</small><div class="acts"><button class="btn alt sm" data-vf="'+esc(x.id)+'" data-v="'+(x.verified?'0':'1')+'">'+(x.verified?'✔ Retirer le badge':'Vérifier ce vendeur')+'</button></div></div>';
   }).join("")||'<p class="note">Aucun vendeur pour le moment.</p>';
   h+='<h2>Tous les produits ('+d.products.length+')</h2>';
   h+=d.products.slice(0,100).map(function(x){
