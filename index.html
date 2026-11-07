@@ -36,6 +36,11 @@ input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);borde
 textarea{min-height:96px;resize:vertical}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
+.chips[hidden]{display:none}
+.chip.sub{min-height:38px;font-size:14px;padding:0 13px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:14px;min-height:92px;font:inherit;font-weight:700;cursor:pointer}
+.tile .em{font-size:26px;line-height:1}
 .chip{flex:0 0 auto;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;padding:0 16px;min-height:44px;font:inherit;cursor:pointer;white-space:nowrap}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px}
@@ -126,6 +131,7 @@ footer{margin:32px 0 0;text-align:center;color:var(--mute);font-size:13px}
 .chart{width:100%;height:auto;display:block;color:var(--ink);margin-top:8px}
 .chart text{fill:currentColor;font-family:inherit}
 .chart .ax{stroke:var(--line)}
+.lnk{color:var(--bd);font-weight:600;text-decoration:underline}
 .vf{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;font-weight:700;color:var(--ink)}
 .vb{width:1.15em;height:1.15em;vertical-align:-.2em;flex:0 0 auto}
 .vb .s{fill:var(--bd);stroke:var(--bd);stroke-width:1.2;stroke-linejoin:round}
@@ -152,8 +158,35 @@ var BASE=String(CFG.SUPABASE_URL||"").replace(/\/+$/,"");
 var PAGE=24, MAXPH=4;
 var $=function(i){return document.getElementById(i);};
 var view=$("view");
-var CATS=[["vetements","Vêtements"],["chaussures","Chaussures"],["sacs","Sacs et accessoires"],["beaute","Beauté et coiffure"],["livres","Livres et formations"],["autres","Autres"]];
-function catName(k){for(var i=0;i<CATS.length;i++)if(CATS[i][0]===k)return CATS[i][1];return "";}
+var CATS=[["vetements","Vêtements","👗"],["chaussures","Chaussures","👟"],["sacs","Sacs et accessoires","👜"],["beaute","Beauté et coiffure","💄"],["electronique","Électronique","📺"],["telephones","Téléphones et accessoires","📱"],["informatique","Informatique","💻"],["maison","Maison et décoration","🏠"],["meubles","Meubles","🛋️"],["cuisine","Cuisine et salle à manger","🍽️"],["electromenager","Électroménager","🧺"],["alimentation","Alimentation et boissons","🍎"],["bebe","Bébé et puériculture","🍼"],["jouets","Jouets et jeux","🧸"],["sport","Sports et fitness","⚽"],["auto","Automobile et moto","🚗"],["livres","Livres et littérature","📚"],["papeterie","Fournitures scolaires et bureau","✏️"],["sante","Santé et bien-être","🌿"],["bricolage","Bricolage et construction","🔧"],["jardin","Jardinage et extérieur","🌱"],["animaux","Animaux","🐾"],["musique","Musique et instruments","🎸"],["arts","Arts, loisirs et photographie","🎨"]];
+var LEGACY=[["autres","Autres","📦"]];
+var SUBS={
+vetements:["Femmes","Hommes","Enfants","Sous-vêtements","Tenues de sport","Tenues traditionnelles et wax"],
+chaussures:["Hommes","Femmes","Enfants","Baskets","Sandales et tongs","Chaussures de ville"],
+sacs:["Sacs à main","Sacs à dos","Valises et voyage","Portefeuilles","Montres","Bijoux","Lunettes","Ceintures"],
+beaute:["Maquillage","Soins de la peau","Parfums","Perruques et tissages","Mèches et extensions","Produits capillaires","Ongles"],
+electronique:["Télévisions","Audio et enceintes","Casques et écouteurs","Appareils photo","Consoles de jeux","Panneaux solaires et batteries","Autres appareils"],
+telephones:["Smartphones","Téléphones basiques","Chargeurs et câbles","Écouteurs","Coques et protections","Batteries externes","Tablettes"],
+informatique:["Ordinateurs portables","Ordinateurs de bureau","Écrans","Imprimantes","Claviers et souris","Disques et clés USB","Réseau et wifi","Composants","Logiciels"],
+maison:["Décoration","Literie","Rideaux et tapis","Éclairage","Linge de maison","Rangement"],
+meubles:["Salons et canapés","Lits et matelas","Tables et chaises","Armoires et commodes","Bureaux","Meubles de rangement"],
+cuisine:["Casseroles et poêles","Vaisselle","Couverts","Ustensiles","Verres et bouteilles","Boîtes de conservation"],
+electromenager:["Réfrigérateurs et congélateurs","Cuisinières","Machines à laver","Ventilateurs et climatiseurs","Mixeurs et blenders","Fers à repasser","Micro-ondes"],
+alimentation:["Produits locaux","Boissons","Épicerie","Fruits et légumes","Viandes et poissons","Pâtisserie","Compléments alimentaires"],
+bebe:["Vêtements bébé","Poussettes et sièges","Lits et berceaux","Alimentation bébé","Couches et hygiène","Jouets d'éveil"],
+jouets:["Jeux de société","Poupées","Voitures et véhicules","Jeux éducatifs","Jeux vidéo","Peluches"],
+sport:["Football","Fitness et musculation","Vélos","Vêtements de sport","Sports de combat","Accessoires de sport"],
+auto:["Voitures","Motos","Pièces détachées","Pneus","Accessoires auto","Huiles et entretien"],
+livres:["Romans","Développement personnel","Livres scolaires et universitaires","Religion","Formations et cours","Bandes dessinées"],
+papeterie:["Cahiers et papier","Stylos et crayons","Sacs d'école","Matériel de bureau","Calculatrices","Classeurs"],
+sante:["Hygiène","Matériel médical","Compléments alimentaires","Produits naturels","Bien-être et massage"],
+bricolage:["Outils","Matériaux de construction","Plomberie","Électricité","Peinture","Quincaillerie"],
+jardin:["Plantes et fleurs","Outils de jardin","Meubles d'extérieur","Arrosage","Barbecue et braseros"],
+animaux:["Chiens","Chats","Oiseaux","Poissons et aquariums","Nourriture","Accessoires pour animaux"],
+musique:["Guitares","Claviers et pianos","Batteries et percussions","Sono et micros","Instruments traditionnels","Accessoires musicaux"],
+arts:["Peinture et dessin","Photographie","Artisanat","Loisirs créatifs","Cadres et sculptures","Collections"]
+};
+function catName(k){var a=CATS.concat(LEGACY);for(var i=0;i<a.length;i++)if(a[i][0]===k)return a[i][1];return "";}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function safeUrl(u){u=String(u||"");return /^(https:\/\/|http:\/\/localhost|data:image\/)/i.test(u)?u:"";}
 function money(p){var n=Number(p.price)||0;return n.toLocaleString("fr-FR",{maximumFractionDigits:2})+(p.currency==="USD"?" $":" FC");}
@@ -186,10 +219,21 @@ function friendly(e){
   if(/Invalid login credentials/i.test(m))return "E-mail ou mot de passe incorrect.";
   if(/already (been )?registered|already exists/i.test(m))return "Cet e-mail a déjà un compte. Connecte-toi.";
   if(/weak_password|password.*(at least|short|characters)/i.test(m))return "Mot de passe trop court : 6 caractères minimum.";
+  if(/same_password|different from the old/i.test(m))return "Choisis un mot de passe différent de l'ancien.";
   if(/rate limit|too many|security purposes/i.test(m))return "Trop d'essais. Attends quelques minutes puis réessaie.";
   if(/valid email|invalid.*email|email.*invalid/i.test(m))return "Cette adresse e-mail n'est pas valide.";
   return m||"Une erreur est survenue. Réessaie.";
 }
+
+/* ---------- Lien « mot de passe oublié » (reçu par e-mail) ---------- */
+var RECOV=null,RECERR=false;
+(function(){
+  var h=location.hash||"";
+  if(h.indexOf("type=recovery")>-1&&h.indexOf("access_token=")>-1){
+    h.replace(/^#/,"").split("&").forEach(function(x){var i=x.indexOf("=");if(i>0&&x.slice(0,i)==="access_token"){try{RECOV=decodeURIComponent(x.slice(i+1));}catch(e){}}});
+  }else if(/error_code=|error=access_denied/.test(h)){RECERR=true;}
+  if(RECOV||RECERR){try{history.replaceState(null,"",location.pathname+location.search+"#/"+(RECOV?"reset":"oubli"));}catch(e){}}
+})();
 
 /* ---------- Session ---------- */
 var SKEY="mb-session", session=null;
@@ -233,24 +277,27 @@ async function http(method,url,body,extra,raw){
   return ct.indexOf("json")>=0?r.json():null;
 }
 var SEL="select=*,profiles(id,name,whatsapp,nuvalk,city,verified)";
-function norm(r){var s=r.profiles||{};return{id:r.id,title:r.title,description:r.description||"",price:Number(r.price),currency:r.currency||"FC",category:r.category,sizes:r.sizes||"",photos:r.photos||[],status:r.status,created_at:r.created_at,featured_until:r.featured_until||null,seller:{id:r.seller_id||s.id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",verified:!!s.verified}};}
+function norm(r){var s=r.profiles||{};return{id:r.id,title:r.title,description:r.description||"",price:Number(r.price),currency:r.currency||"FC",category:r.category,sizes:r.sizes||"",photos:r.photos||[],status:r.status,created_at:r.created_at,featured_until:r.featured_until||null,subcategory:r.subcategory||"",seller:{id:r.seller_id||s.id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",verified:!!s.verified}};}
 function pathOf(url){var m=String(url).split("/storage/v1/object/public/photos/");return m.length===2?m[1]:"";}
 var Remote={
   async list(o){
     var f="";
     if(o.cat)f+="&category=eq."+encodeURIComponent(o.cat);
+    if(o.sub)f+="&subcategory=eq."+encodeURIComponent(o.sub);
+    if(o.seller)f+="&seller_id=eq."+encodeURIComponent(o.seller);
     var q0=(o.q||"").replace(/[,()*%\\:]/g," ").trim();
-    if(q0){var pat=encodeURIComponent("*"+q0+"*");f+="&or=(title.ilike."+pat+",description.ilike."+pat+")";}
+    if(q0){var pat=encodeURIComponent("*"+q0+"*");f+="&or=(title.ilike."+pat+",description.ilike."+pat+",subcategory.ilike."+pat+")";}
     var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&status=eq.active"+f+"&order=created_at.desc&limit="+(PAGE+1)+"&offset="+(o.offset||0));
     var feat=[];
-    if(!(o.offset>0)){
+    if(!(o.offset>0)&&!o.seller){
       try{var fr=await http("GET",BASE+"/rest/v1/products?"+SEL+"&status=eq.active&featured_until=gt."+encodeURIComponent(new Date().toISOString())+f+"&order=featured_until.desc&limit=6");feat=(fr||[]).map(norm).filter(isFeat);}catch(e){}
     }
     return{items:rows.slice(0,PAGE).map(norm),more:rows.length>PAGE,used:Math.min(rows.length,PAGE),feat:feat};
   },
+  async seller(id){var rows=await http("GET",BASE+"/rest/v1/profiles?select=id,name,whatsapp,nuvalk,city,verified&id=eq."+encodeURIComponent(id));var r=rows&&rows[0];return r?{id:r.id,name:r.name||"",whatsapp:r.whatsapp||"",nuvalk:r.nuvalk||"",city:r.city||"",verified:!!r.verified}:null;},
   async get(id){var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&id=eq."+encodeURIComponent(id));return rows&&rows[0]?norm(rows[0]):null;},
   async mine(){var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&seller_id=eq."+encodeURIComponent(cur.id)+"&order=created_at.desc");return rows.map(norm);},
-  async create(p){var rows=await http("POST",BASE+"/rest/v1/products?"+SEL,{seller_id:cur.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos,status:"active"},{Prefer:"return=representation"});return norm(rows[0]);},
+  async create(p){var rows=await http("POST",BASE+"/rest/v1/products?"+SEL,{seller_id:cur.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,subcategory:p.subcategory||"",sizes:p.sizes,photos:p.photos,status:"active"},{Prefer:"return=representation"});return norm(rows[0]);},
   async update(id,patch){var rows=await http("PATCH",BASE+"/rest/v1/products?id=eq."+encodeURIComponent(id)+"&"+SEL,patch,{Prefer:"return=representation"});return rows&&rows[0]?norm(rows[0]):null;},
   async remove(id){await http("DELETE",BASE+"/rest/v1/products?id=eq."+encodeURIComponent(id));},
   async isAdmin(){if(!cur)return false;var rows=await http("GET",BASE+"/rest/v1/admins?select=user_id&user_id=eq."+encodeURIComponent(cur.id));return !!(rows&&rows.length);},
@@ -284,6 +331,20 @@ var Remote={
     return{needsConfirm:true};
   },
   async login(email,password){var j=await http("POST",BASE+"/auth/v1/token?grant_type=password",{email:email,password:password});saveSession(toSession(j));return{ok:true};},
+  async recover(email){
+    var url=BASE+"/auth/v1/recover?redirect_to="+encodeURIComponent(location.href.split("#")[0]);
+    await http("POST",url,{email:email});
+    return{ok:true};
+  },
+  async resetPassword(token,pw){
+    var r;
+    try{r=await fetch(BASE+"/auth/v1/user",{method:"PUT",headers:{apikey:CFG.SUPABASE_KEY,"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({password:pw})});}
+    catch(e){throw new Error("Pas de connexion. Vérifie ton internet et réessaie.");}
+    var j={};try{j=await r.json();}catch(_){}
+    if(!r.ok){var err=new Error(j.msg||j.message||j.error_description||j.error_code||("Erreur "+r.status));err.status=r.status;throw err;}
+    await Remote.login(j.email,pw);
+    return{ok:true};
+  },
   async logout(){
     try{if(session&&session.access_token)await fetch(BASE+"/auth/v1/logout",{method:"POST",headers:headers()});}catch(e){}
     saveSession(null);
@@ -325,7 +386,7 @@ function dload(){
   return d;
 }
 function dsave(d){try{localStorage.setItem(DKEY,JSON.stringify(d));}catch(e){throw new Error("Le téléphone n'a plus de place pour la démonstration.");}}
-function dnorm(d,p){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];var s=u?u.profile:{};return{id:p.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos.slice(),status:p.status,created_at:p.created_at,featured_until:p.featured_until||null,seller:{id:p.seller_id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",verified:!!s.verified}};}
+function dnorm(d,p){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];var s=u?u.profile:{};return{id:p.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos.slice(),status:p.status,created_at:p.created_at,featured_until:p.featured_until||null,subcategory:p.subcategory||"",seller:{id:p.seller_id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",verified:!!s.verified}};}
 function byNew(a,b){return a.created_at<b.created_at?1:-1;}
 function b2d(blob){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result);};r.onerror=function(){rej(new Error("Photo illisible."));};r.readAsDataURL(blob);});}
 function ymd(a){return a.getFullYear()+"-"+("0"+(a.getMonth()+1)).slice(-2)+"-"+("0"+a.getDate()).slice(-2);}
@@ -352,13 +413,14 @@ function dstats(d){
 var Demo={
   async list(o){
     var d=dload(),q=(o.q||"").toLowerCase().trim(),off=o.offset||0;
-    var rows=d.products.filter(function(p){return p.status==="active"&&(!o.cat||p.category===o.cat)&&(!q||(p.title+" "+p.description).toLowerCase().indexOf(q)>=0);}).sort(byNew).map(function(p){return dnorm(d,p);});
-    var feat=off>0?[]:rows.filter(isFeat).sort(function(a,b){return a.featured_until<b.featured_until?1:-1;}).slice(0,6);
+    var rows=d.products.filter(function(p){return p.status==="active"&&(!o.cat||p.category===o.cat)&&(!o.sub||p.subcategory===o.sub)&&(!o.seller||p.seller_id===o.seller)&&(!q||(p.title+" "+p.description+" "+(p.subcategory||"")).toLowerCase().indexOf(q)>=0);}).sort(byNew).map(function(p){return dnorm(d,p);});
+    var feat=(off>0||o.seller)?[]:rows.filter(isFeat).sort(function(a,b){return a.featured_until<b.featured_until?1:-1;}).slice(0,6);
     return{items:rows.slice(off,off+PAGE),more:rows.length>off+PAGE,used:rows.slice(off,off+PAGE).length,feat:feat};
   },
+  async seller(id){var d=dload(),u=d.users.filter(function(x){return x.id===id;})[0];if(!u)return null;var p=u.profile||{};return{id:u.id,name:p.name||"",whatsapp:p.whatsapp||"",nuvalk:p.nuvalk||"",city:p.city||"",verified:!!p.verified};},
   async get(id){var d=dload(),p=d.products.filter(function(x){return x.id===id;})[0];return p?dnorm(d,p):null;},
   async mine(){var d=dload();return d.products.filter(function(p){return p.seller_id===cur.id;}).sort(byNew).map(function(p){return dnorm(d,p);});},
-  async create(p){var d=dload();var r={id:"d"+Date.now(),seller_id:cur.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos,status:"active",created_at:new Date().toISOString()};d.products.push(r);dsave(d);return dnorm(d,r);},
+  async create(p){var d=dload();var r={id:"d"+Date.now(),seller_id:cur.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,subcategory:p.subcategory||"",sizes:p.sizes,photos:p.photos,status:"active",created_at:new Date().toISOString()};d.products.push(r);dsave(d);return dnorm(d,r);},
   async update(id,patch){var d=dload(),r=d.products.filter(function(x){return x.id===id&&x.seller_id===cur.id;})[0];if(!r)return null;for(var k in patch)r[k]=patch[k];dsave(d);return dnorm(d,r);},
   async remove(id){var d=dload();d.products=d.products.filter(function(x){return x.id!==id;});dsave(d);},
   async isAdmin(){return !!cur;},
@@ -388,6 +450,8 @@ var Demo={
     if(!u)throw new Error("Invalid login credentials");
     saveSession({demo:true,user:{id:u.id,email:u.email}});return{ok:true};
   },
+  async recover(){return{ok:true};},
+  async resetPassword(){throw new Error("Disponible seulement avec la vraie base.");},
   async logout(){saveSession(null);},
   async me(){
     if(!session||!session.user)return null;
@@ -436,7 +500,7 @@ function loading(){return '<div class="empty">Chargement…</div>';}
 function notFound(){return '<div class="empty"><h1>Produit introuvable</h1><p>Il a peut-être été vendu ou retiré.</p><a class="btn" href="#/" style="max-width:260px;margin:12px auto 0">Voir les produits</a></div>';}
 
 /* ---------- Accueil ---------- */
-var S={q:"",cat:"",items:[],roff:0,more:false,loaded:false,loading:false,err:"",stale:false,scroll:0,active:false};
+var S={q:"",cat:"",sub:"",items:[],roff:0,more:false,loaded:false,loading:false,err:"",stale:false,scroll:0,active:false};
 function cardHtml(p){
   var im=safeUrl(p.photos&&p.photos[0]);
   return '<a class="card" href="#/p/'+encodeURIComponent(p.id)+'"><div class="ph">'+(im?'<img loading="lazy" decoding="async" src="'+im+'" alt="'+esc(p.title)+'">':'')+(isFeat(p)?'<span class="une">À la une</span>':'')+'<span class="price">'+esc(money(p))+'</span></div><div class="ct"><b>'+esc(p.title)+'</b><small>'+sellerHtml(p.seller)+'</small><span class="cta">Commander</span></div></a>';
@@ -445,6 +509,11 @@ function paintChips(){
   var h='<button class="chip" data-cat="" aria-pressed="'+(S.cat===""?"true":"false")+'">Tout</button>';
   CATS.forEach(function(c){h+='<button class="chip" data-cat="'+c[0]+'" aria-pressed="'+(S.cat===c[0]?"true":"false")+'">'+c[1]+'</button>';});
   $("chips").innerHTML=h;
+  var sb=$("subs"),ss=SUBS[S.cat];
+  if(sb){
+    if(ss){var x='<button class="chip sub" data-sub="" aria-pressed="'+(S.sub===""?"true":"false")+'">Tout '+esc(catName(S.cat))+'</button>';ss.forEach(function(n){x+='<button class="chip sub" data-sub="'+esc(n)+'" aria-pressed="'+(S.sub===n?"true":"false")+'">'+esc(n)+'</button>';});sb.innerHTML=x;sb.hidden=false;}
+    else{sb.innerHTML="";sb.hidden=true;}
+  }
 }
 function paintGrid(){
   var g=$("grid"),m=$("more");if(!g)return;
@@ -467,7 +536,7 @@ async function loadList(reset){
   paintGrid();
   var off=reset?0:S.roff,keep=(S.q===""&&S.cat==="");
   try{
-    var r=await API.list({q:S.q,cat:S.cat,offset:off});
+    var r=await API.list({q:S.q,cat:S.cat,sub:S.sub,offset:off});
     var seen={};(reset?(r.feat||[]):S.items).forEach(function(x){seen[x.id]=1;});
     var add=r.items.filter(function(x){return !seen[x.id];});
     S.items=reset?(r.feat||[]).concat(add):S.items.concat(add);S.roff+=(r.used!=null?r.used:r.items.length);S.more=r.more;S.loaded=true;
@@ -479,11 +548,60 @@ async function loadList(reset){
   S.loading=false;paintGrid();
 }
 function showHome(){
-  view.innerHTML='<form class="search" id="sf" role="search"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Que cherches-tu ?" aria-label="Rechercher un produit" value="'+esc(S.q)+'"><button class="go" type="submit">Chercher</button></form><div class="chips" id="chips" role="group" aria-label="Catégories"></div><div id="grid" class="grid" aria-live="polite"></div><div id="more"></div><footer>Wanasci Global<br>Les visites sont comptées de façon anonyme.</footer>';
+  view.innerHTML='<form class="search" id="sf" role="search"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Que cherches-tu ?" aria-label="Rechercher un produit" value="'+esc(S.q)+'"><button class="go" type="submit">Chercher</button></form><div class="chips" id="chips" role="group" aria-label="Catégories"></div><div class="chips" id="subs" role="group" aria-label="Sous-catégories" hidden></div><div style="text-align:center"><a class="link" href="#/categories">Voir toutes les catégories</a></div><div id="grid" class="grid" aria-live="polite"></div><div id="more"></div><footer>Wanasci Global<br>Les visites sont comptées de façon anonyme.</footer>';
   paintChips();
   $("sf").onsubmit=function(e){e.preventDefault();S.q=$("q").value.trim();loadList(true);};
-  $("chips").onclick=function(e){var b=e.target.closest("[data-cat]");if(!b)return;S.cat=b.getAttribute("data-cat");paintChips();loadList(true);};
+  $("chips").onclick=function(e){var b=e.target.closest("[data-cat]");if(!b)return;S.cat=b.getAttribute("data-cat");S.sub="";paintChips();loadList(true);};
+  $("subs").onclick=function(e){var b=e.target.closest("[data-sub]");if(!b)return;S.sub=b.getAttribute("data-sub");paintChips();loadList(true);};
   if(S.loaded){paintGrid();window.scrollTo(0,S.scroll||0);}else loadList(true);
+}
+
+/* ---------- Toutes les catégories ---------- */
+function showCategories(){
+  var h='<button class="back" id="back">← Retour</button><h1 tabindex="-1" id="ptitle">Toutes les catégories</h1><div class="tiles">';
+  CATS.forEach(function(c){h+='<button class="tile" data-k="'+c[0]+'"><span class="em" aria-hidden="true">'+c[2]+'</span><span>'+esc(c[1])+'</span></button>';});
+  view.innerHTML=h+'</div>';
+  try{$("ptitle").focus({preventScroll:true});}catch(e){}
+  $("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/";};
+  view.onclick=function(e){var b=e.target.closest("[data-k]");if(!b)return;S.cat=b.getAttribute("data-k");S.sub="";S.q="";S.loaded=false;location.hash="#/";};
+}
+
+/* ---------- Boutique d'un vendeur ---------- */
+function shopLink(id){return location.href.split("#")[0]+"#/vendeur/"+encodeURIComponent(id);}
+function shareShop(id,name){
+  var url=shopLink(id),text="Découvre la boutique de "+(name||"ce vendeur")+" sur Ma boutique";
+  if(navigator.share){navigator.share({title:name||"Ma boutique",text:text,url:url}).catch(function(){});}
+  else copy(text+"\n"+url).then(function(ok){toast(ok?"Lien de la boutique copié.":"Copie le lien dans la barre d'adresse.");});
+}
+async function showSeller(id,rid){
+  view.innerHTML=loading();
+  var first=null,sel=null;
+  try{first=await API.list({seller:id,offset:0});}
+  catch(e){if(rid!==routeId)return;if(/uuid|syntax/i.test(e.message||"")){view.innerHTML=notFound().replace("Produit introuvable","Boutique introuvable").replace("Il a peut-être été vendu ou retiré.","Ce lien ne mène à aucune boutique.");return;}view.innerHTML=errBox(friendly(e));$("retry").onclick=function(){showSeller(id,rid);};return;}
+  if(rid!==routeId)return;
+  sel=first.items[0]&&first.items[0].seller;
+  if(!sel){try{sel=await API.seller(id);}catch(e){}if(rid!==routeId)return;}
+  if(!sel){view.innerHTML=notFound().replace("Produit introuvable","Boutique introuvable").replace("Il a peut-être été vendu ou retiré.","Ce lien ne mène à aucune boutique.");return;}
+  var L={items:first.items,off:first.used!=null?first.used:first.items.length,more:first.more,busy:false},num=waNum(sel.whatsapp);
+  var h='<button class="back" id="back">← Retour</button>';
+  h+='<div class="seller"><h1 tabindex="-1" id="ptitle" style="margin:0">'+esc(sel.name||"Vendeur")+'</h1>'+(sel.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(sel.city?'<div class="meta">'+esc(sel.city)+'</div>':'')+'</div>';
+  h+='<div class="orow" style="margin-top:12px">'+(num?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+num+'?text='+encodeURIComponent("Bonjour "+(sel.name||"")+", j'ai vu votre boutique sur Ma boutique.")+'">WhatsApp</a>':'')+'<button class="btn alt" id="shs">Partager</button></div>';
+  h+='<h2>Produits en vente</h2><div id="sg" class="grid"></div><div id="sm"></div>';
+  view.innerHTML=h;
+  try{$("ptitle").focus({preventScroll:true});}catch(e){}
+  function paint(){
+    $("sg").innerHTML=L.items.map(cardHtml).join("");
+    $("sm").innerHTML=(L.items.length?"":'<p class="note">Ce vendeur n\'a pas de produit en vente pour le moment.</p>')+(L.more?'<button class="btn alt" id="smb" style="max-width:260px;margin:16px auto 0">'+(L.busy?"Chargement…":"Voir plus")+'</button>':"");
+    if($("smb"))$("smb").onclick=async function(){
+      if(L.busy)return;L.busy=true;paint();
+      try{var r=await API.list({seller:id,offset:L.off});var seen={};L.items.forEach(function(x){seen[x.id]=1;});L.items=L.items.concat(r.items.filter(function(x){return !seen[x.id];}));L.off+=(r.used!=null?r.used:r.items.length);L.more=r.more;}
+      catch(e){toast(friendly(e));}
+      L.busy=false;if(rid===routeId)paint();
+    };
+  }
+  paint();
+  $("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/";};
+  $("shs").onclick=function(){shareShop(id,sel.name);};
 }
 
 /* ---------- Fiche produit ---------- */
@@ -498,9 +616,9 @@ async function showDetail(id,rid){
   var bar="",h='<button class="back" id="back">← Retour</button>';
   h+='<div class="gal" id="gal" tabindex="0" aria-label="Photos du produit">'+(ph.length?ph.map(function(u,i){return '<img src="'+u+'" alt="'+esc(p.title)+' – photo '+(i+1)+'"'+(i?' loading="lazy"':'')+'>';}).join(""):'<div class="none"></div>')+'</div>';
   if(ph.length>1)h+='<div class="gcount" id="gcount">1 / '+ph.length+'</div>';
-  h+='<h1 tabindex="-1" id="ptitle">'+esc(p.title)+'</h1><div class="pprice">'+esc(money(p))+'</div><p class="meta">'+esc(catName(p.category))+(p.sizes?' · Tailles : '+esc(p.sizes):'')+(p.status==="sold"?' · <b>Vendu</b>':'')+'</p>';
+  h+='<h1 tabindex="-1" id="ptitle">'+esc(p.title)+'</h1><div class="pprice">'+esc(money(p))+'</div><p class="meta">'+esc(catName(p.category))+(p.subcategory?' › '+esc(p.subcategory):'')+(p.sizes?' · Tailles : '+esc(p.sizes):'')+(p.status==="sold"?' · <b>Vendu</b>':'')+'</p>';
   if(p.description)h+='<p class="desc">'+esc(p.description)+'</p>';
-  h+='<div class="seller"><b>'+esc(s.name||"Vendeur")+'</b>'+(s.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(s.city?'<div class="meta">'+esc(s.city)+'</div>':'')+'</div>';
+  h+='<div class="seller"><b>'+esc(s.name||"Vendeur")+'</b>'+(s.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(s.city?'<div class="meta">'+esc(s.city)+'</div>':'')+(s.id?'<a class="link" href="#/vendeur/'+encodeURIComponent(s.id)+'">Voir tous ses produits</a>':'')+'</div>';
   if(own){h+='<a class="btn alt" href="#/modifier/'+encodeURIComponent(p.id)+'">Modifier mon produit</a>';}
   else if(p.status==="sold"){h+='<p class="note">Ce produit est vendu.</p>';}
   else{
@@ -552,6 +670,7 @@ function renderAuth(mode){
     h+='<p class="note">Ton nom, ta ville, ton WhatsApp et ton nom Nuvalk seront visibles par tous les acheteurs. Il te faut au moins un des deux contacts.</p>';
   }
   h+='<div class="err" id="ferr" role="alert"></div><button class="btn" id="fgo" type="submit">'+(login?"Se connecter":"Créer mon compte")+'</button></form>';
+  if(login)h+='<p class="note"><a class="lnk" href="#/oubli">Mot de passe oublié ?</a></p>';
   view.innerHTML=h;
   $("ptitle").focus({preventScroll:true});
   view.querySelector(".tabs").onclick=function(e){var b=e.target.closest("[data-m]");if(b)renderAuth(b.getAttribute("data-m"));};
@@ -577,6 +696,48 @@ function renderAuth(mode){
     }catch(ex){err.textContent=friendly(ex);btn.disabled=false;btn.textContent=login?"Se connecter":"Créer mon compte";}
   };
 }
+function showForgot(){
+  var h='<h1 tabindex="-1" id="ptitle">Mot de passe oublié</h1>';
+  if(RECERR){h+='<p class="err" role="alert">Ce lien a expiré ou a déjà servi. Demande-en un nouveau ci-dessous.</p>';RECERR=false;}
+  h+='<p class="note">Écris l\'e-mail de ton compte. Nous t\'envoyons un lien pour choisir un nouveau mot de passe.</p>';
+  h+='<form id="rf" novalidate>'+field("re","E-mail","email",'autocomplete="email" inputmode="email"');
+  h+='<div class="err" id="rerr" role="alert"></div><button class="btn" id="rgo" type="submit">Envoyer le lien</button></form>';
+  h+='<p class="note"><a class="lnk" href="#/compte">Retour à la connexion</a></p>';
+  view.innerHTML=h;
+  $("ptitle").focus({preventScroll:true});
+  $("rf").onsubmit=async function(e){
+    e.preventDefault();
+    var email=$("re").value.trim(),err=$("rerr");err.textContent="";
+    if(!/^\S+@\S+\.\S+$/.test(email)){err.textContent="Écris une adresse e-mail valide.";$("re").focus();return;}
+    var btn=$("rgo");btn.disabled=true;btn.textContent="Un instant…";
+    try{
+      await API.recover(email);
+      view.innerHTML='<div class="empty"><h1>Vérifie ton e-mail</h1><p>Si un compte existe avec '+esc(email)+', un lien vient d\'être envoyé. Ouvre-le avec Chrome. Pense à regarder aussi dans les spams.</p><p><a class="lnk" href="#/compte">Retour à la connexion</a></p></div>';
+    }catch(ex){err.textContent=friendly(ex);btn.disabled=false;btn.textContent="Envoyer le lien";}
+  };
+}
+function showReset(){
+  if(!RECOV){view.innerHTML='<div class="empty"><h1>Lien invalide</h1><p>Ce lien a expiré ou a déjà servi.</p><p><a class="lnk" href="#/oubli">Demander un nouveau lien</a></p></div>';return;}
+  var h='<h1 tabindex="-1" id="ptitle">Nouveau mot de passe</h1>';
+  h+='<form id="nf" novalidate>'+field("n1","Nouveau mot de passe","password",'autocomplete="new-password"',"6 caractères minimum.")+field("n2","Répète le mot de passe","password",'autocomplete="new-password"');
+  h+='<div class="err" id="nerr" role="alert"></div><button class="btn" id="ngo" type="submit">Enregistrer</button></form>';
+  view.innerHTML=h;
+  $("ptitle").focus({preventScroll:true});
+  $("nf").onsubmit=async function(e){
+    e.preventDefault();
+    var a=$("n1").value,b=$("n2").value,err=$("nerr");err.textContent="";
+    if(a.length<6){err.textContent="Le mot de passe doit avoir au moins 6 caractères.";$("n1").focus();return;}
+    if(a!==b){err.textContent="Les deux mots de passe ne sont pas identiques.";$("n2").focus();return;}
+    var btn=$("ngo");btn.disabled=true;btn.textContent="Un instant…";
+    try{
+      await API.resetPassword(RECOV,a);RECOV=null;
+      cur=await API.me();updateBar();toast("Mot de passe changé. Tu es connecté.");location.hash="#/compte";
+    }catch(ex){
+      if(ex.status===401||ex.status===403||/expired|invalid|jwt/i.test(ex.message||"")){RECOV=null;showReset();return;}
+      err.textContent=friendly(ex);btn.disabled=false;btn.textContent="Enregistrer";
+    }
+  };
+}
 async function showAccount(rid){
   if(!cur){renderAuth("login");return;}
   view.innerHTML=loading();
@@ -591,6 +752,7 @@ async function showAccount(rid){
   var h='<h1 tabindex="-1" id="ptitle">Bonjour '+esc(pr.name||"")+'</h1>';
   if(pr.verified)h+='<div class="vf">'+VB+' Ton compte est vérifié</div>';
   h+='<a class="btn" href="#/nouveau">Vendre un produit</a>';
+  h+='<button class="btn alt" id="shop">Partager ma boutique</button>';
   h+='<h2>Mes produits ('+list.length+')</h2>';
   h+=list.length?list.map(function(p){
     var im=safeUrl(p.photos&&p.photos[0]);
@@ -612,6 +774,7 @@ async function showAccount(rid){
       try{await API.remove(id);if(old)API.drop(old.photos||[]);S.loaded=false;toast("Produit supprimé.");showAccount(routeId);}catch(ex){toast(friendly(ex));rm.disabled=false;}
     }
   };
+  $("shop").onclick=function(){shareShop(cur.id,(cur.profile&&cur.profile.name)||"");};
   $("pf").onsubmit=async function(e){
     e.preventDefault();
     var err=$("perr");err.textContent="";
@@ -651,7 +814,8 @@ async function showForm(id,rid){
   var h='<button class="back" id="back">← Retour</button><h1 tabindex="-1" id="ptitle">'+(p?"Modifier le produit":"Vendre un produit")+'</h1><form id="pfm" novalidate>';
   h+='<div class="field"><label>Photos (1 à '+MAXPH+')</label><div class="pth" id="pth"></div><small>La première photo est la couverture. Photographie l\'article en pleine lumière.</small></div>';
   h+=field("ft","Nom du produit","text",'maxlength="80" value="'+esc(p?p.title:"")+'" placeholder="Ex. Robe wax fleurie"');
-  h+='<div class="field"><label for="fk">Catégorie</label><select id="fk">'+CATS.map(function(c){return '<option value="'+c[0]+'"'+(p&&p.category===c[0]?' selected':'')+'>'+c[1]+'</option>';}).join("")+'</select></div>';
+  h+='<div class="field"><label for="fk">Catégorie</label><select id="fk">'+CATS.concat(p&&p.category==="autres"?LEGACY:[]).map(function(c){return '<option value="'+c[0]+'"'+(p&&p.category===c[0]?' selected':'')+'>'+c[1]+'</option>';}).join("")+'</select></div>';
+  h+='<div class="field"><label for="fsb">Sous-catégorie (facultatif)</label><select id="fsb"></select></div>';
   h+='<div class="row2"><div class="field"><label for="fpr">Prix</label><input id="fpr" inputmode="decimal" value="'+(p?esc(String(p.price).replace(".",",")):"")+'" placeholder="Ex. 25000"></div><div class="field cur"><label for="fcu">Monnaie</label><select id="fcu"><option value="FC"'+(p&&p.currency==="FC"?' selected':'')+'>FC</option><option value="USD"'+(p&&p.currency==="USD"?' selected':'')+'>$</option></select></div></div>';
   h+=field("fs","Tailles ou pointures (facultatif)","text",'maxlength="60" value="'+esc(p?p.sizes:"")+'" placeholder="Ex. S, M, L ou 38 à 44"');
   h+='<div class="field"><label for="fd">Description (facultatif)</label><textarea id="fd" maxlength="1000" placeholder="État, couleur, matière, livraison…">'+esc(p?p.description:"")+'</textarea></div>';
@@ -659,6 +823,13 @@ async function showForm(id,rid){
   view.innerHTML=h;
   $("ptitle").focus({preventScroll:true});
   $("back").onclick=function(){history.back();};
+  function paintSubs(cur0){
+    var ss=SUBS[$("fk").value]||[],o='<option value="">Choisir…</option>';
+    ss.forEach(function(n){o+='<option value="'+esc(n)+'"'+(cur0===n?' selected':'')+'>'+esc(n)+'</option>';});
+    $("fsb").innerHTML=o;$("fsb").disabled=!ss.length;
+  }
+  paintSubs(p?p.subcategory:"");
+  $("fk").onchange=function(){paintSubs("");};
   paintPhotos();
   $("pth").onclick=function(e){var b=e.target.closest("[data-rp]");if(!b)return;F.photos.splice(+b.getAttribute("data-rp"),1);paintPhotos();};
   $("pfm").onsubmit=async function(e){
@@ -678,7 +849,7 @@ async function showForm(id,rid){
         var u=await API.upload(ph.blob);uploaded.push(u);urls.push(u);
       }
       btn.textContent="Publication…";
-      var data={title:title,description:$("fd").value.trim(),price:price,currency:$("fcu").value,category:$("fk").value,sizes:$("fs").value.trim(),photos:urls};
+      var data={title:title,description:$("fd").value.trim(),price:price,currency:$("fcu").value,category:$("fk").value,subcategory:$("fsb").value,sizes:$("fs").value.trim(),photos:urls};
       var saved;
       if(p){saved=await API.update(p.id,data);if(!saved)throw new Error("Impossible d'enregistrer. Réessaie.");
         var gone=(F.orig||[]).filter(function(o){return urls.indexOf(o)<0;});if(gone.length)API.drop(gone);}
@@ -735,7 +906,7 @@ async function showAdmin(rid,keep){
     '<div class="tile"><b>'+ord+'</b><span>Commandes lancées</span><small>'+(st.orders_wa_7d||0)+' WhatsApp · '+(st.orders_nv_7d||0)+' Nuvalk</small></div></div>';
   h+='<h2>7 derniers jours</h2>'+chartSvg(st.daily&&st.daily.length?st.daily:[]);
   h+='<p class="note">Un visiteur = un téléphone ou navigateur, compté une fois par jour. Une commande lancée = un clic sur « Commander » : la vente, le paiement et la livraison se font sur WhatsApp ou Nuvalk, donc tu vois l\'intérêt des acheteurs, pas les ventes réelles. Les acheteurs n\'ont pas de compte : seuls les vendeurs sont des inscrits.</p>';
-  var bc=st.by_category||{},cl=CATS.filter(function(c){return bc[c[0]];});
+  var bc=st.by_category||{},cl=CATS.concat(LEGACY).filter(function(c){return bc[c[0]];});
   h+='<h2>Produits par catégorie</h2>'+(cl.length?cl.map(function(c){return '<div class="hd"><div class="t"><span>'+esc(c[1])+'</span><span>'+bc[c[0]]+'</span></div></div>';}).join(""):'<p class="note">Aucun produit en vente.</p>');
   h+='<h2>Produits les plus regardés</h2>'+((st.top&&st.top.length)?st.top.map(function(x,i){return '<a class="hd" style="display:block;text-decoration:none" href="#/p/'+encodeURIComponent(x.id)+'"><div class="t"><span>'+(i+1)+'. '+esc(x.title)+'</span><span>'+x.views+(x.views>1?' vues':' vue')+'</span></div></a>';}).join(""):'<p class="note">Pas encore de vues cette semaine.</p>');
   h+='<h2>Vendeurs ('+d.profiles.length+')</h2>';
@@ -776,7 +947,11 @@ function route(){
   document.body.classList.remove("has-order");
   if(r==="")showHome();
   else if(r==="p"&&a[1])showDetail(decodeURIComponent(a[1]),rid);
+  else if(r==="vendeur"&&a[1])showSeller(decodeURIComponent(a[1]),rid);
   else if(r==="compte")showAccount(rid);
+  else if(r==="categories")showCategories();
+  else if(r==="oubli")showForgot();
+  else if(r==="reset")showReset();
   else if(r==="admin")showAdmin(rid);
   else if(r==="nouveau")showForm(null,rid);
   else if(r==="modifier"&&a[1])showForm(decodeURIComponent(a[1]),rid);
