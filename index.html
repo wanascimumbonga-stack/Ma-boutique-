@@ -38,7 +38,8 @@ textarea{min-height:96px;resize:vertical}
 .chips::-webkit-scrollbar{display:none}
 .chips[hidden]{display:none}
 .cf{width:100%;margin-top:12px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;padding:0 12px}
-.pays{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pays{display:grid;grid-template-columns:1fr;gap:8px}
+.payrow .pnum{margin-top:6px}
 .field label.pay{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--line);border-radius:12px;padding:0 10px;background:var(--card);font-weight:400}
 .field label.pay input{width:20px;height:20px;min-height:0;padding:0;flex:none}
 .chip.sub{min-height:38px;font-size:14px;padding:0 13px}
@@ -193,8 +194,10 @@ arts:["Peinture et dessin","Photographie","Artisanat","Loisirs créatifs","Cadre
 var COMMUNES=["Bandalungwa","Barumbu","Bumbu","Gombe","Kalamu","Kasa-Vubu","Kimbanseke","Kintambo","Kisenso","Lemba","Limete","Lingwala","Makala","Maluku","Masina","Matete","Mont-Ngafula","Ndjili","Ngaba","Ngaliema","Ngiri-Ngiri","Nsele","Selembao"];
 var VILLES=["Lubumbashi","Goma","Bukavu","Kisangani","Mbuji-Mayi","Kolwezi","Matadi","Kananga","Butembo","Uvira"];
 var PAY=[["orange","Orange Money"],["mpesa","M-Pesa"],["airtel","Airtel Money"],["afrimoney","Afrimoney"],["livraison","Paiement à la livraison"],["main","En main propre"]];
-function payList(v){var a=String(v||"").split(",");return PAY.filter(function(p){return a.indexOf(p[0])>=0;}).map(function(p){return p[1];});}
-function payHtml(v){var l=payList(v);return l.length?'<div class="meta"><b>Paiement accepté :</b> '+esc(l.join(" · "))+'</div>':"";}
+var MOBILE=["orange","mpesa","airtel","afrimoney"];
+function payMap(v){var m={};String(v||"").split(",").forEach(function(x){if(!x)return;var i=x.indexOf(":"),k=i>0?x.slice(0,i):x,n=i>0?x.slice(i+1):"";m[k]=n;});return m;}
+function payList(v){var m=payMap(v);return PAY.filter(function(p){return p[0] in m;}).map(function(p){return p[1]+(m[p[0]]?" : "+m[p[0]]:"");});}
+function payHtml(v){var l=payList(v);return l.length?'<div class="meta"><b>Paiement accepté :</b><br>'+l.map(esc).join('<br>')+'</div><div class="meta">Vérifie le nom du titulaire avant d\'envoyer de l\'argent.</div>':"";}
 function cityOptions(sel){
   var h='<option value="">Choisir…</option><optgroup label="Kinshasa">';
   COMMUNES.forEach(function(c){var v=c+", Kinshasa";h+='<option value="'+esc(v)+'"'+(sel===v?' selected':'')+'>'+esc(c)+'</option>';});
@@ -685,10 +688,14 @@ function cityField(id,val){
 function wireCity(id){var s=$(id),o=$(id+"o");if(!s||!o)return;s.onchange=function(){o.hidden=s.value!=="__autre";if(!o.hidden)o.focus();};}
 function getCity(id){var s=$(id);if(!s)return "";return s.value==="__autre"?$(id+"o").value.trim():s.value;}
 function payField(val){
-  var a=String(val||"").split(",");
-  return '<div class="field"><label>Moyens de paiement acceptés</label><div class="pays">'+PAY.map(function(p){return '<label class="pay"><input type="checkbox" name="pay" value="'+p[0]+'"'+(a.indexOf(p[0])>=0?' checked':'')+'> '+esc(p[1])+'</label>';}).join("")+'</div><small>Affiché sur tes produits. Les acheteurs savent comment te payer.</small></div>';
+  var m=payMap(val);
+  return '<div class="field"><label>Moyens de paiement acceptés</label><div class="pays">'+PAY.map(function(p){
+    var on=p[0] in m,mob=MOBILE.indexOf(p[0])>=0;
+    return '<div class="payrow"><label class="pay"><input type="checkbox" name="pay" value="'+p[0]+'"'+(on?' checked':'')+'> '+esc(p[1])+'</label>'+(mob?'<input class="pnum" type="tel" inputmode="tel" maxlength="22" placeholder="Numéro '+esc(p[1])+'" aria-label="Numéro '+esc(p[1])+'" value="'+esc(m[p[0]]||"")+'"'+(on?'':' hidden')+'>':'')+'</div>';
+  }).join("")+'</div><small>Écris le numéro qui reçoit l\'argent. Si tu laisses vide, tu donneras le numéro en discutant avec l\'acheteur.</small></div>';
 }
-function getPay(){return Array.prototype.map.call(view.querySelectorAll('input[name="pay"]:checked'),function(i){return i.value;}).join(",");}
+function wirePay(){Array.prototype.forEach.call(view.querySelectorAll('input[name="pay"]'),function(i){i.onchange=function(){var n=i.closest(".payrow").querySelector(".pnum");if(n){n.hidden=!i.checked;if(i.checked)n.focus();}};});}
+function getPay(){return Array.prototype.map.call(view.querySelectorAll('input[name="pay"]:checked'),function(i){var n=i.closest(".payrow").querySelector(".pnum"),v=n?n.value.replace(/[^0-9+]/g,"").slice(0,15):"";return i.value+(v?":"+v:"");}).join(",");}
 function field(id,label,type,extra,hint){return '<div class="field"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="'+type+'" '+(extra||"")+'>'+(hint?'<small>'+hint+'</small>':'')+'</div>';}
 function renderAuth(mode){
   var login=mode==="login";
@@ -810,7 +817,7 @@ async function showAccount(rid){
       try{await API.remove(id);if(old)API.drop(old.photos||[]);S.loaded=false;toast("Produit supprimé.");showAccount(routeId);}catch(ex){toast(friendly(ex));rm.disabled=false;}
     }
   };
-  wireCity("pc");
+  wireCity("pc");wirePay();
   $("shop").onclick=function(){shareShop(cur.id,(cur.profile&&cur.profile.name)||"");};
   $("pf").onsubmit=async function(e){
     e.preventDefault();
