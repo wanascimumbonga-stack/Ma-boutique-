@@ -37,6 +37,10 @@ textarea{min-height:96px;resize:vertical}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
 .chips[hidden]{display:none}
+.cf{width:100%;margin-top:12px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;padding:0 12px}
+.pays{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field label.pay{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--line);border-radius:12px;padding:0 10px;background:var(--card);font-weight:400}
+.field label.pay input{width:20px;height:20px;min-height:0;padding:0;flex:none}
 .chip.sub{min-height:38px;font-size:14px;padding:0 13px}
 .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
 .tile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:14px;min-height:92px;font:inherit;font-weight:700;cursor:pointer}
@@ -186,6 +190,18 @@ animaux:["Chiens","Chats","Oiseaux","Poissons et aquariums","Nourriture","Access
 musique:["Guitares","Claviers et pianos","Batteries et percussions","Sono et micros","Instruments traditionnels","Accessoires musicaux"],
 arts:["Peinture et dessin","Photographie","Artisanat","Loisirs créatifs","Cadres et sculptures","Collections"]
 };
+var COMMUNES=["Bandalungwa","Barumbu","Bumbu","Gombe","Kalamu","Kasa-Vubu","Kimbanseke","Kintambo","Kisenso","Lemba","Limete","Lingwala","Makala","Maluku","Masina","Matete","Mont-Ngafula","Ndjili","Ngaba","Ngaliema","Ngiri-Ngiri","Nsele","Selembao"];
+var VILLES=["Lubumbashi","Goma","Bukavu","Kisangani","Mbuji-Mayi","Kolwezi","Matadi","Kananga","Butembo","Uvira"];
+var PAY=[["orange","Orange Money"],["mpesa","M-Pesa"],["airtel","Airtel Money"],["afrimoney","Afrimoney"],["livraison","Paiement à la livraison"],["main","En main propre"]];
+function payList(v){var a=String(v||"").split(",");return PAY.filter(function(p){return a.indexOf(p[0])>=0;}).map(function(p){return p[1];});}
+function payHtml(v){var l=payList(v);return l.length?'<div class="meta"><b>Paiement accepté :</b> '+esc(l.join(" · "))+'</div>':"";}
+function cityOptions(sel){
+  var h='<option value="">Choisir…</option><optgroup label="Kinshasa">';
+  COMMUNES.forEach(function(c){var v=c+", Kinshasa";h+='<option value="'+esc(v)+'"'+(sel===v?' selected':'')+'>'+esc(c)+'</option>';});
+  h+='</optgroup><optgroup label="Autres villes">';
+  VILLES.forEach(function(c){h+='<option value="'+esc(c)+'"'+(sel===c?' selected':'')+'>'+esc(c)+'</option>';});
+  return h+'</optgroup><option value="__autre"'+(sel==="__autre"?' selected':'')+'>Autre ville…</option>';
+}
 function catName(k){var a=CATS.concat(LEGACY);for(var i=0;i<a.length;i++)if(a[i][0]===k)return a[i][1];return "";}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function safeUrl(u){u=String(u||"");return /^(https:\/\/|http:\/\/localhost|data:image\/)/i.test(u)?u:"";}
@@ -276,25 +292,29 @@ async function http(method,url,body,extra,raw){
   var ct=r.headers.get("content-type")||"";
   return ct.indexOf("json")>=0?r.json():null;
 }
-var SEL="select=*,profiles(id,name,whatsapp,nuvalk,city,verified)";
-function norm(r){var s=r.profiles||{};return{id:r.id,title:r.title,description:r.description||"",price:Number(r.price),currency:r.currency||"FC",category:r.category,sizes:r.sizes||"",photos:r.photos||[],status:r.status,created_at:r.created_at,featured_until:r.featured_until||null,subcategory:r.subcategory||"",seller:{id:r.seller_id||s.id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",verified:!!s.verified}};}
+var PCOLS="id,name,whatsapp,nuvalk,city,verified,payments";
+var SEL="select=*,profiles("+PCOLS+")",SELI="select=*,profiles!inner("+PCOLS+")";
+function cityOk(c){return c==="Kinshasa"||COMMUNES.indexOf(c)>=0||VILLES.indexOf(c)>=0;}
+function norm(r){var s=r.profiles||{};return{id:r.id,title:r.title,description:r.description||"",price:Number(r.price),currency:r.currency||"FC",category:r.category,sizes:r.sizes||"",photos:r.photos||[],status:r.status,created_at:r.created_at,featured_until:r.featured_until||null,subcategory:r.subcategory||"",seller:{id:r.seller_id||s.id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",payments:s.payments||"",verified:!!s.verified}};}
 function pathOf(url){var m=String(url).split("/storage/v1/object/public/photos/");return m.length===2?m[1]:"";}
 var Remote={
   async list(o){
     var f="";
     if(o.cat)f+="&category=eq."+encodeURIComponent(o.cat);
+    var SX=SEL;
+    if(o.city&&cityOk(o.city)){SX=SELI;f+="&profiles.city=ilike."+encodeURIComponent("*"+o.city+"*");}
     if(o.sub)f+="&subcategory=eq."+encodeURIComponent(o.sub);
     if(o.seller)f+="&seller_id=eq."+encodeURIComponent(o.seller);
     var q0=(o.q||"").replace(/[,()*%\\:]/g," ").trim();
     if(q0){var pat=encodeURIComponent("*"+q0+"*");f+="&or=(title.ilike."+pat+",description.ilike."+pat+",subcategory.ilike."+pat+")";}
-    var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&status=eq.active"+f+"&order=created_at.desc&limit="+(PAGE+1)+"&offset="+(o.offset||0));
+    var rows=await http("GET",BASE+"/rest/v1/products?"+SX+"&status=eq.active"+f+"&order=created_at.desc&limit="+(PAGE+1)+"&offset="+(o.offset||0));
     var feat=[];
     if(!(o.offset>0)&&!o.seller){
-      try{var fr=await http("GET",BASE+"/rest/v1/products?"+SEL+"&status=eq.active&featured_until=gt."+encodeURIComponent(new Date().toISOString())+f+"&order=featured_until.desc&limit=6");feat=(fr||[]).map(norm).filter(isFeat);}catch(e){}
+      try{var fr=await http("GET",BASE+"/rest/v1/products?"+SX+"&status=eq.active&featured_until=gt."+encodeURIComponent(new Date().toISOString())+f+"&order=featured_until.desc&limit=6");feat=(fr||[]).map(norm).filter(isFeat);}catch(e){}
     }
     return{items:rows.slice(0,PAGE).map(norm),more:rows.length>PAGE,used:Math.min(rows.length,PAGE),feat:feat};
   },
-  async seller(id){var rows=await http("GET",BASE+"/rest/v1/profiles?select=id,name,whatsapp,nuvalk,city,verified&id=eq."+encodeURIComponent(id));var r=rows&&rows[0];return r?{id:r.id,name:r.name||"",whatsapp:r.whatsapp||"",nuvalk:r.nuvalk||"",city:r.city||"",verified:!!r.verified}:null;},
+  async seller(id){var rows=await http("GET",BASE+"/rest/v1/profiles?select="+PCOLS+"&id=eq."+encodeURIComponent(id));var r=rows&&rows[0];return r?{id:r.id,name:r.name||"",whatsapp:r.whatsapp||"",nuvalk:r.nuvalk||"",city:r.city||"",payments:r.payments||"",verified:!!r.verified}:null;},
   async get(id){var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&id=eq."+encodeURIComponent(id));return rows&&rows[0]?norm(rows[0]):null;},
   async mine(){var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&seller_id=eq."+encodeURIComponent(cur.id)+"&order=created_at.desc");return rows.map(norm);},
   async create(p){var rows=await http("POST",BASE+"/rest/v1/products?"+SEL,{seller_id:cur.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,subcategory:p.subcategory||"",sizes:p.sizes,photos:p.photos,status:"active"},{Prefer:"return=representation"});return norm(rows[0]);},
@@ -386,7 +406,7 @@ function dload(){
   return d;
 }
 function dsave(d){try{localStorage.setItem(DKEY,JSON.stringify(d));}catch(e){throw new Error("Le téléphone n'a plus de place pour la démonstration.");}}
-function dnorm(d,p){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];var s=u?u.profile:{};return{id:p.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos.slice(),status:p.status,created_at:p.created_at,featured_until:p.featured_until||null,subcategory:p.subcategory||"",seller:{id:p.seller_id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",verified:!!s.verified}};}
+function dnorm(d,p){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];var s=u?u.profile:{};return{id:p.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos.slice(),status:p.status,created_at:p.created_at,featured_until:p.featured_until||null,subcategory:p.subcategory||"",seller:{id:p.seller_id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",payments:s.payments||"",verified:!!s.verified}};}
 function byNew(a,b){return a.created_at<b.created_at?1:-1;}
 function b2d(blob){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result);};r.onerror=function(){rej(new Error("Photo illisible."));};r.readAsDataURL(blob);});}
 function ymd(a){return a.getFullYear()+"-"+("0"+(a.getMonth()+1)).slice(-2)+"-"+("0"+a.getDate()).slice(-2);}
@@ -413,11 +433,11 @@ function dstats(d){
 var Demo={
   async list(o){
     var d=dload(),q=(o.q||"").toLowerCase().trim(),off=o.offset||0;
-    var rows=d.products.filter(function(p){return p.status==="active"&&(!o.cat||p.category===o.cat)&&(!o.sub||p.subcategory===o.sub)&&(!o.seller||p.seller_id===o.seller)&&(!q||(p.title+" "+p.description+" "+(p.subcategory||"")).toLowerCase().indexOf(q)>=0);}).sort(byNew).map(function(p){return dnorm(d,p);});
+    var rows=d.products.filter(function(p){return p.status==="active"&&(!o.cat||p.category===o.cat)&&(!o.sub||p.subcategory===o.sub)&&(!o.seller||p.seller_id===o.seller)&&(!o.city||(function(){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];return !!u&&String((u.profile&&u.profile.city)||"").toLowerCase().indexOf(o.city.toLowerCase())>=0;})())&&(!q||(p.title+" "+p.description+" "+(p.subcategory||"")).toLowerCase().indexOf(q)>=0);}).sort(byNew).map(function(p){return dnorm(d,p);});
     var feat=(off>0||o.seller)?[]:rows.filter(isFeat).sort(function(a,b){return a.featured_until<b.featured_until?1:-1;}).slice(0,6);
     return{items:rows.slice(off,off+PAGE),more:rows.length>off+PAGE,used:rows.slice(off,off+PAGE).length,feat:feat};
   },
-  async seller(id){var d=dload(),u=d.users.filter(function(x){return x.id===id;})[0];if(!u)return null;var p=u.profile||{};return{id:u.id,name:p.name||"",whatsapp:p.whatsapp||"",nuvalk:p.nuvalk||"",city:p.city||"",verified:!!p.verified};},
+  async seller(id){var d=dload(),u=d.users.filter(function(x){return x.id===id;})[0];if(!u)return null;var p=u.profile||{};return{id:u.id,name:p.name||"",whatsapp:p.whatsapp||"",nuvalk:p.nuvalk||"",city:p.city||"",payments:p.payments||"",verified:!!p.verified};},
   async get(id){var d=dload(),p=d.products.filter(function(x){return x.id===id;})[0];return p?dnorm(d,p):null;},
   async mine(){var d=dload();return d.products.filter(function(p){return p.seller_id===cur.id;}).sort(byNew).map(function(p){return dnorm(d,p);});},
   async create(p){var d=dload();var r={id:"d"+Date.now(),seller_id:cur.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,subcategory:p.subcategory||"",sizes:p.sizes,photos:p.photos,status:"active",created_at:new Date().toISOString()};d.products.push(r);dsave(d);return dnorm(d,r);},
@@ -500,7 +520,7 @@ function loading(){return '<div class="empty">Chargement…</div>';}
 function notFound(){return '<div class="empty"><h1>Produit introuvable</h1><p>Il a peut-être été vendu ou retiré.</p><a class="btn" href="#/" style="max-width:260px;margin:12px auto 0">Voir les produits</a></div>';}
 
 /* ---------- Accueil ---------- */
-var S={q:"",cat:"",sub:"",items:[],roff:0,more:false,loaded:false,loading:false,err:"",stale:false,scroll:0,active:false};
+var S={q:"",cat:"",sub:"",city:"",items:[],roff:0,more:false,loaded:false,loading:false,err:"",stale:false,scroll:0,active:false};
 function cardHtml(p){
   var im=safeUrl(p.photos&&p.photos[0]);
   return '<a class="card" href="#/p/'+encodeURIComponent(p.id)+'"><div class="ph">'+(im?'<img loading="lazy" decoding="async" src="'+im+'" alt="'+esc(p.title)+'">':'')+(isFeat(p)?'<span class="une">À la une</span>':'')+'<span class="price">'+esc(money(p))+'</span></div><div class="ct"><b>'+esc(p.title)+'</b><small>'+sellerHtml(p.seller)+'</small><span class="cta">Commander</span></div></a>';
@@ -521,7 +541,7 @@ function paintGrid(){
   if(S.err&&!S.items.length){g.innerHTML="";m.innerHTML=errBox(S.err);$("retry").onclick=function(){loadList(true);};return;}
   if(!S.items.length){
     g.innerHTML="";
-    m.innerHTML='<div class="empty"><h1>'+(S.q||S.cat?"Aucun résultat":"Pas encore de produit")+'</h1><p>'+(S.q||S.cat?"Essaie un autre mot ou une autre catégorie.":"Sois le premier à mettre un produit en vente.")+'</p>'+(S.q||S.cat?'':'<a class="btn" href="#/compte" style="max-width:260px;margin:12px auto 0">Vendre un produit</a>')+'</div>';
+    m.innerHTML='<div class="empty"><h1>'+(S.q||S.cat||S.city?"Aucun résultat":"Pas encore de produit")+'</h1><p>'+(S.q||S.cat||S.city?"Essaie un autre mot, une autre catégorie ou une autre commune.":"Sois le premier à mettre un produit en vente.")+'</p>'+(S.q||S.cat||S.city?'':'<a class="btn" href="#/compte" style="max-width:260px;margin:12px auto 0">Vendre un produit</a>')+'</div>';
     return;
   }
   g.innerHTML=S.items.map(cardHtml).join("");
@@ -534,9 +554,9 @@ async function loadList(reset){
   S.loading=true;S.err="";S.stale=false;
   if(reset){S.items=[];S.more=false;S.roff=0;}
   paintGrid();
-  var off=reset?0:S.roff,keep=(S.q===""&&S.cat==="");
+  var off=reset?0:S.roff,keep=(S.q===""&&S.cat===""&&!S.city);
   try{
-    var r=await API.list({q:S.q,cat:S.cat,sub:S.sub,offset:off});
+    var r=await API.list({q:S.q,cat:S.cat,sub:S.sub,city:S.city,offset:off});
     var seen={};(reset?(r.feat||[]):S.items).forEach(function(x){seen[x.id]=1;});
     var add=r.items.filter(function(x){return !seen[x.id];});
     S.items=reset?(r.feat||[]).concat(add):S.items.concat(add);S.roff+=(r.used!=null?r.used:r.items.length);S.more=r.more;S.loaded=true;
@@ -548,8 +568,10 @@ async function loadList(reset){
   S.loading=false;paintGrid();
 }
 function showHome(){
-  view.innerHTML='<form class="search" id="sf" role="search"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Que cherches-tu ?" aria-label="Rechercher un produit" value="'+esc(S.q)+'"><button class="go" type="submit">Chercher</button></form><div class="chips" id="chips" role="group" aria-label="Catégories"></div><div class="chips" id="subs" role="group" aria-label="Sous-catégories" hidden></div><div style="text-align:center"><a class="link" href="#/categories">Voir toutes les catégories</a></div><div id="grid" class="grid" aria-live="polite"></div><div id="more"></div><footer>Wanasci Global<br>Les visites sont comptées de façon anonyme.</footer>';
+  view.innerHTML='<form class="search" id="sf" role="search"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Que cherches-tu ?" aria-label="Rechercher un produit" value="'+esc(S.q)+'"><button class="go" type="submit">Chercher</button></form><select id="cf" class="cf" aria-label="Filtrer par commune ou ville"><option value="">Toutes les communes et villes</option><option value="Kinshasa">Toute la ville de Kinshasa</option><optgroup label="Communes de Kinshasa">'+COMMUNES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup><optgroup label="Autres villes">'+VILLES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup></select><div class="chips" id="chips" role="group" aria-label="Catégories"></div><div class="chips" id="subs" role="group" aria-label="Sous-catégories" hidden></div><div style="text-align:center"><a class="link" href="#/categories">Voir toutes les catégories</a></div><div id="grid" class="grid" aria-live="polite"></div><div id="more"></div><footer>Wanasci Global<br>Les visites sont comptées de façon anonyme.</footer>';
   paintChips();
+  $("cf").value=S.city;
+  $("cf").onchange=function(){S.city=$("cf").value;loadList(true);};
   $("sf").onsubmit=function(e){e.preventDefault();S.q=$("q").value.trim();loadList(true);};
   $("chips").onclick=function(e){var b=e.target.closest("[data-cat]");if(!b)return;S.cat=b.getAttribute("data-cat");S.sub="";paintChips();loadList(true);};
   $("subs").onclick=function(e){var b=e.target.closest("[data-sub]");if(!b)return;S.sub=b.getAttribute("data-sub");paintChips();loadList(true);};
@@ -584,7 +606,7 @@ async function showSeller(id,rid){
   if(!sel){view.innerHTML=notFound().replace("Produit introuvable","Boutique introuvable").replace("Il a peut-être été vendu ou retiré.","Ce lien ne mène à aucune boutique.");return;}
   var L={items:first.items,off:first.used!=null?first.used:first.items.length,more:first.more,busy:false},num=waNum(sel.whatsapp);
   var h='<button class="back" id="back">← Retour</button>';
-  h+='<div class="seller"><h1 tabindex="-1" id="ptitle" style="margin:0">'+esc(sel.name||"Vendeur")+'</h1>'+(sel.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(sel.city?'<div class="meta">'+esc(sel.city)+'</div>':'')+'</div>';
+  h+='<div class="seller"><h1 tabindex="-1" id="ptitle" style="margin:0">'+esc(sel.name||"Vendeur")+'</h1>'+(sel.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(sel.city?'<div class="meta">'+esc(sel.city)+'</div>':'')+payHtml(sel.payments)+'</div>';
   h+='<div class="orow" style="margin-top:12px">'+(num?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+num+'?text='+encodeURIComponent("Bonjour "+(sel.name||"")+", j'ai vu votre boutique sur Ma boutique.")+'">WhatsApp</a>':'')+'<button class="btn alt" id="shs">Partager</button></div>';
   h+='<h2>Produits en vente</h2><div id="sg" class="grid"></div><div id="sm"></div>';
   view.innerHTML=h;
@@ -618,7 +640,7 @@ async function showDetail(id,rid){
   if(ph.length>1)h+='<div class="gcount" id="gcount">1 / '+ph.length+'</div>';
   h+='<h1 tabindex="-1" id="ptitle">'+esc(p.title)+'</h1><div class="pprice">'+esc(money(p))+'</div><p class="meta">'+esc(catName(p.category))+(p.subcategory?' › '+esc(p.subcategory):'')+(p.sizes?' · Tailles : '+esc(p.sizes):'')+(p.status==="sold"?' · <b>Vendu</b>':'')+'</p>';
   if(p.description)h+='<p class="desc">'+esc(p.description)+'</p>';
-  h+='<div class="seller"><b>'+esc(s.name||"Vendeur")+'</b>'+(s.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(s.city?'<div class="meta">'+esc(s.city)+'</div>':'')+(s.id?'<a class="link" href="#/vendeur/'+encodeURIComponent(s.id)+'">Voir tous ses produits</a>':'')+'</div>';
+  h+='<div class="seller"><b>'+esc(s.name||"Vendeur")+'</b>'+(s.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(s.city?'<div class="meta">'+esc(s.city)+'</div>':'')+payHtml(s.payments)+(s.id?'<a class="link" href="#/vendeur/'+encodeURIComponent(s.id)+'">Voir tous ses produits</a>':'')+'</div>';
   if(own){h+='<a class="btn alt" href="#/modifier/'+encodeURIComponent(p.id)+'">Modifier mon produit</a>';}
   else if(p.status==="sold"){h+='<p class="note">Ce produit est vendu.</p>';}
   else{
@@ -654,6 +676,19 @@ async function showDetail(id,rid){
 }
 
 /* ---------- Compte vendeur ---------- */
+function cityField(id,val){
+  val=String(val||"");
+  var known=val===""||val.indexOf(", Kinshasa")>0&&COMMUNES.indexOf(val.replace(", Kinshasa",""))>=0||VILLES.indexOf(val)>=0;
+  var sel=known?val:"__autre";
+  return '<div class="field"><label for="'+id+'">Commune ou ville</label><select id="'+id+'">'+cityOptions(sel)+'</select><input id="'+id+'o" type="text" maxlength="60" placeholder="Écris ta ville ou ta commune" value="'+(known?"":esc(val))+'"'+(sel==="__autre"?'':' hidden')+' style="margin-top:8px"><small>Les acheteurs filtrent les vendeurs par commune.</small></div>';
+}
+function wireCity(id){var s=$(id),o=$(id+"o");if(!s||!o)return;s.onchange=function(){o.hidden=s.value!=="__autre";if(!o.hidden)o.focus();};}
+function getCity(id){var s=$(id);if(!s)return "";return s.value==="__autre"?$(id+"o").value.trim():s.value;}
+function payField(val){
+  var a=String(val||"").split(",");
+  return '<div class="field"><label>Moyens de paiement acceptés</label><div class="pays">'+PAY.map(function(p){return '<label class="pay"><input type="checkbox" name="pay" value="'+p[0]+'"'+(a.indexOf(p[0])>=0?' checked':'')+'> '+esc(p[1])+'</label>';}).join("")+'</div><small>Affiché sur tes produits. Les acheteurs savent comment te payer.</small></div>';
+}
+function getPay(){return Array.prototype.map.call(view.querySelectorAll('input[name="pay"]:checked'),function(i){return i.value;}).join(",");}
 function field(id,label,type,extra,hint){return '<div class="field"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="'+type+'" '+(extra||"")+'>'+(hint?'<small>'+hint+'</small>':'')+'</div>';}
 function renderAuth(mode){
   var login=mode==="login";
@@ -666,13 +701,14 @@ function renderAuth(mode){
   if(!login){
     h+=field("fw","Numéro WhatsApp","tel",'autocomplete="tel" inputmode="tel" maxlength="20" placeholder="+243 812 345 678"',"Avec l'indicatif du pays.");
     h+=field("fv","Nom d'utilisateur Nuvalk (facultatif)","text",'autocapitalize="none" maxlength="40" placeholder="@toi"');
-    h+=field("fc","Ville ou commune","text",'maxlength="60" placeholder="Ex. Gombe, Kinshasa"');
+    h+=cityField("fc","");
     h+='<p class="note">Ton nom, ta ville, ton WhatsApp et ton nom Nuvalk seront visibles par tous les acheteurs. Il te faut au moins un des deux contacts.</p>';
   }
   h+='<div class="err" id="ferr" role="alert"></div><button class="btn" id="fgo" type="submit">'+(login?"Se connecter":"Créer mon compte")+'</button></form>';
   if(login)h+='<p class="note"><a class="lnk" href="#/oubli">Mot de passe oublié ?</a></p>';
   view.innerHTML=h;
   $("ptitle").focus({preventScroll:true});
+  if(!login)wireCity("fc");
   view.querySelector(".tabs").onclick=function(e){var b=e.target.closest("[data-m]");if(b)renderAuth(b.getAttribute("data-m"));};
   $("af").onsubmit=async function(e){
     e.preventDefault();
@@ -681,7 +717,7 @@ function renderAuth(mode){
     if(pw.length<6){err.textContent="Le mot de passe doit avoir au moins 6 caractères.";$("fp").focus();return;}
     var f={email:email,password:pw};
     if(!login){
-      f.name=$("fn").value.trim();f.nuvalk=nvName($("fv").value);f.city=$("fc").value.trim();
+      f.name=$("fn").value.trim();f.nuvalk=nvName($("fv").value);f.city=getCity("fc");
       var raw=$("fw").value.trim();f.whatsapp=raw?waNum(raw):"";
       if(f.name.length<2){err.textContent="Écris le nom qui sera affiché (2 lettres minimum).";$("fn").focus();return;}
       if(raw&&!f.whatsapp){err.textContent="Numéro WhatsApp invalide. Écris-le avec l'indicatif, par exemple +243 812 345 678.";$("fw").focus();return;}
@@ -758,7 +794,7 @@ async function showAccount(rid){
     var im=safeUrl(p.photos&&p.photos[0]);
     return '<div class="mine"><a href="#/p/'+encodeURIComponent(p.id)+'">'+(im?'<img src="'+im+'" alt="">':'<div class="thumb"></div>')+'</a><div class="t"><b>'+esc(p.title)+'</b><div class="meta">'+esc(money(p))+' · <span class="st'+(p.status==="sold"?' sold':'')+'">'+(p.status==="sold"?"Vendu":"En vente")+'</span>'+(isFeat(p)?' <span class="tag">À la une</span>':'')+'</div><div class="acts"><a class="btn alt sm" href="#/modifier/'+encodeURIComponent(p.id)+'">Modifier</a><button class="btn alt sm" data-tg="'+esc(p.id)+'" data-s="'+p.status+'">'+(p.status==="sold"?"Remettre en vente":"Marquer vendu")+'</button><button class="btn alt sm" data-rm="'+esc(p.id)+'">Supprimer</button></div></div></div>';
   }).join(""):'<p class="note">Tu n\'as pas encore de produit en vente.</p>';
-  h+='<h2>Mon profil de vendeur</h2><form id="pf" novalidate>'+field("pn","Nom affiché","text",'maxlength="60" value="'+esc(pr.name||"")+'"')+field("pw","Numéro WhatsApp","tel",'inputmode="tel" maxlength="20" value="'+esc(pr.whatsapp||"")+'" placeholder="+243 812 345 678"',"Avec l'indicatif du pays.")+field("pv","Nom d'utilisateur Nuvalk","text",'autocapitalize="none" maxlength="40" value="'+esc(pr.nuvalk||"")+'" placeholder="@toi"')+field("pc","Ville ou commune","text",'maxlength="60" value="'+esc(pr.city||"")+'"')+'<div class="err" id="perr" role="alert"></div><button class="btn alt" type="submit">Enregistrer mon profil</button></form>';
+  h+='<h2>Mon profil de vendeur</h2><form id="pf" novalidate>'+field("pn","Nom affiché","text",'maxlength="60" value="'+esc(pr.name||"")+'"')+field("pw","Numéro WhatsApp","tel",'inputmode="tel" maxlength="20" value="'+esc(pr.whatsapp||"")+'" placeholder="+243 812 345 678"',"Avec l'indicatif du pays.")+field("pv","Nom d'utilisateur Nuvalk","text",'autocapitalize="none" maxlength="40" value="'+esc(pr.nuvalk||"")+'" placeholder="@toi"')+cityField("pc",pr.city)+payField(pr.payments)+'<div class="err" id="perr" role="alert"></div><button class="btn alt" type="submit">Enregistrer mon profil</button></form>';
   h+='<h2>Outils</h2>'+(adm?'<a class="btn" href="#/admin">Espace propriétaire</a>':'')+'<a class="btn alt" href="cahier.html">Mon cahier : ventes, stock, dettes</a><button class="btn alt" id="out">Se déconnecter</button>';
   view.innerHTML=h;
   $("ptitle").focus({preventScroll:true});
@@ -774,6 +810,7 @@ async function showAccount(rid){
       try{await API.remove(id);if(old)API.drop(old.photos||[]);S.loaded=false;toast("Produit supprimé.");showAccount(routeId);}catch(ex){toast(friendly(ex));rm.disabled=false;}
     }
   };
+  wireCity("pc");
   $("shop").onclick=function(){shareShop(cur.id,(cur.profile&&cur.profile.name)||"");};
   $("pf").onsubmit=async function(e){
     e.preventDefault();
@@ -782,7 +819,7 @@ async function showAccount(rid){
     if(name.length<2){err.textContent="Écris le nom affiché (2 lettres minimum).";return;}
     if(raw&&!w){err.textContent="Numéro WhatsApp invalide. Écris-le avec l'indicatif, par exemple +243 812 345 678.";return;}
     if(!w&&!nvv){err.textContent="Garde au moins un moyen de contact : WhatsApp ou Nuvalk.";return;}
-    try{var np=await API.saveProfile({name:name,whatsapp:w,nuvalk:nvv,city:$("pc").value.trim()});if(np)cur.profile=np;S.loaded=false;toast("Profil enregistré.");}
+    try{var np=await API.saveProfile({name:name,whatsapp:w,nuvalk:nvv,city:getCity("pc"),payments:getPay()});if(np)cur.profile=np;S.loaded=false;toast("Profil enregistré.");}
     catch(ex){err.textContent=friendly(ex);}
   };
   $("out").onclick=async function(){await API.logout();cur=null;updateBar();S.loaded=false;toast("Déconnecté.");location.hash="#/";};
