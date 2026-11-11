@@ -40,12 +40,17 @@ textarea{min-height:96px;resize:vertical}
 .cf{width:100%;margin-top:12px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;padding:0 12px}
 .pays{display:grid;grid-template-columns:1fr;gap:8px}
 .payrow .pnum{margin-top:6px}
+.payl{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px}
+.cp{min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+.rvf{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.rvf .full{grid-column:1/-1}
+.rvt{font-weight:700;margin:8px 0}
 .field label.pay{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--line);border-radius:12px;padding:0 10px;background:var(--card);font-weight:400}
 .field label.pay input{width:20px;height:20px;min-height:0;padding:0;flex:none}
 .chip.sub{min-height:38px;font-size:14px;padding:0 13px}
-.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
-.tile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:14px;min-height:92px;font:inherit;font-weight:700;cursor:pointer}
-.tile .em{font-size:26px;line-height:1}
+.ctiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.ctile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:14px;min-height:92px;font:inherit;font-weight:700;cursor:pointer}
+.ctile .em{font-size:26px;line-height:1}
 .chip{flex:0 0 auto;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;padding:0 16px;min-height:44px;font:inherit;cursor:pointer;white-space:nowrap}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px}
@@ -197,7 +202,15 @@ var PAY=[["orange","Orange Money"],["mpesa","M-Pesa"],["airtel","Airtel Money"],
 var MOBILE=["orange","mpesa","airtel","afrimoney"];
 function payMap(v){var m={};String(v||"").split(",").forEach(function(x){if(!x)return;var i=x.indexOf(":"),k=i>0?x.slice(0,i):x,n=i>0?x.slice(i+1):"";m[k]=n;});return m;}
 function payList(v){var m=payMap(v);return PAY.filter(function(p){return p[0] in m;}).map(function(p){return p[1]+(m[p[0]]?" : "+m[p[0]]:"");});}
-function payHtml(v){var l=payList(v);return l.length?'<div class="meta"><b>Paiement accepté :</b><br>'+l.map(esc).join('<br>')+'</div><div class="meta">Vérifie le nom du titulaire avant d\'envoyer de l\'argent.</div>':"";}
+function payHtml(v){
+  var m=payMap(v),rows=[];
+  PAY.forEach(function(p){
+    if(!(p[0] in m))return;
+    var n=m[p[0]];
+    rows.push(n?'<div class="payl"><span>'+esc(p[1])+' : <b>'+esc(n)+'</b></span><button class="cp" type="button" data-copy="'+esc(n)+'" data-pay="'+p[0]+'">Copier</button></div>':'<div class="payl"><span>'+esc(p[1])+'</span></div>');
+  });
+  return rows.length?'<div class="meta"><b>Paiement accepté :</b></div>'+rows.join("")+'<div class="meta">Vérifie le nom du titulaire avant d\'envoyer de l\'argent.</div>':"";
+}
 function cityOptions(sel){
   var h='<option value="">Choisir…</option><optgroup label="Kinshasa">';
   COMMUNES.forEach(function(c){var v=c+", Kinshasa";h+='<option value="'+esc(v)+'"'+(sel===v?' selected':'')+'>'+esc(c)+'</option>';});
@@ -328,15 +341,19 @@ var Remote={
     var st=await http("POST",BASE+"/rest/v1/rpc/admin_stats",{});
     var pr=await http("GET",BASE+"/rest/v1/profiles?select=*&order=created_at.desc&limit=500");
     var pd=await http("GET",BASE+"/rest/v1/products?select=id,seller_id,title,price,currency,category,status,photos,created_at,featured_until&order=created_at.desc&limit=500");
-    return{stats:st||{},profiles:pr||[],products:pd||[]};
+    var rv=[];try{rv=await http("GET",BASE+"/rest/v1/revenues?select=*&order=paid_at.desc,created_at.desc&limit=500");}catch(e){rv=null;}
+    return{stats:st||{},profiles:pr||[],products:pd||[],revenues:rv};
   },
+  async revAdd(r){var rows=await http("POST",BASE+"/rest/v1/revenues",r,{Prefer:"return=representation"});return rows&&rows[0];},
+  async revDel(id){await http("DELETE",BASE+"/rest/v1/revenues?id=eq."+encodeURIComponent(id));},
   async adminVerify(uid,val){await http("POST",BASE+"/rest/v1/rpc/admin_set_verified",{p_user:uid,p_value:!!val});},
   async adminFeature(pid,days){await http("POST",BASE+"/rest/v1/rpc/admin_set_featured",{p_product:pid,p_days:days});},
-  track(kind,pid,dev){
+  track(kind,pid,dev,detail){
     try{
       var h={apikey:CFG.SUPABASE_KEY,"Content-Type":"application/json"};
       if(isJwt(CFG.SUPABASE_KEY))h.Authorization="Bearer "+CFG.SUPABASE_KEY;
-      fetch(BASE+"/rest/v1/events",{method:"POST",keepalive:true,headers:h,body:JSON.stringify({kind:kind,product_id:pid||null,device:dev})}).catch(function(){});
+      var b={kind:kind,product_id:pid||null,device:dev};if(detail)b.detail=String(detail).slice(0,20);
+      fetch(BASE+"/rest/v1/events",{method:"POST",keepalive:true,headers:h,body:JSON.stringify(b)}).catch(function(){});
     }catch(e){}
   },
   async upload(blob){
@@ -431,7 +448,7 @@ function dstats(d){
   return{sellers_total:d.users.length,sellers_7d:d.users.filter(function(u){return u.created&&now-new Date(u.created).getTime()<W;}).length,
     products_active:d.products.filter(function(p){return p.status==="active";}).length,products_sold:d.products.filter(function(p){return p.status==="sold";}).length,
     by_category:cat,visitors_today:uniq(kind("visit",function(e){return ms(e)>=t0.getTime();})),visitors_7d:uniq(kind("visit",r7)),
-    views_7d:kind("view",r7).length,orders_wa_7d:kind("order_wa",r7).length,orders_nv_7d:kind("order_nv",r7).length,daily:daily,top:top};
+    views_7d:kind("view",r7).length,orders_wa_7d:kind("order_wa",r7).length,orders_nv_7d:kind("order_nv",r7).length,pay_copy_7d:kind("pay_copy",r7).length,pay_copy_by:(function(){var o={};kind("pay_copy",r7).forEach(function(e){if(e.detail)o[e.detail]=(o[e.detail]||0)+1;});return o;})(),daily:daily,top:top};
 }
 var Demo={
   async list(o){
@@ -451,14 +468,17 @@ var Demo={
     var d=dload();
     return{
       stats:dstats(d),
+      revenues:(d.revenues||[]).slice().sort(function(a,b){return a.paid_at<b.paid_at?1:-1;}),
       profiles:d.users.map(function(u){return Object.assign({id:u.id,created_at:u.created||new Date().toISOString()},u.profile);}),
       products:d.products.map(function(p){return{id:p.id,seller_id:p.seller_id,title:p.title,price:p.price,currency:p.currency,category:p.category,status:p.status,photos:p.photos,created_at:p.created_at,featured_until:p.featured_until||null};})
     };
   },
+  async revAdd(r){var d=dload();d.revenues=d.revenues||[];var x=Object.assign({id:"r"+Date.now(),created_at:new Date().toISOString()},r);d.revenues.push(x);dsave(d);return x;},
+  async revDel(id){var d=dload();d.revenues=(d.revenues||[]).filter(function(x){return x.id!==id;});dsave(d);},
   async adminVerify(uid,val){var d=dload(),u=d.users.filter(function(x){return x.id===uid;})[0];if(u){u.profile.verified=!!val;dsave(d);}},
   async adminFeature(pid,days){var d=dload(),p=d.products.filter(function(x){return x.id===pid;})[0];if(p){p.featured_until=days>0?new Date(Date.now()+Math.min(days,365)*864e5).toISOString():null;dsave(d);}},
-  track(kind,pid,dev){
-    try{var d=dload();d.events=d.events||[];d.events.push({kind:kind,product_id:pid||null,device:dev,created_at:new Date().toISOString()});if(d.events.length>800)d.events=d.events.slice(-800);dsave(d);}catch(e){}
+  track(kind,pid,dev,detail){
+    try{var d=dload();d.events=d.events||[];d.events.push({kind:kind,detail:detail||"",product_id:pid||null,device:dev,created_at:new Date().toISOString()});if(d.events.length>800)d.events=d.events.slice(-800);dsave(d);}catch(e){}
   },
   async upload(blob){return b2d(blob);},
   async drop(){},
@@ -489,7 +509,7 @@ function device(){
   try{d=localStorage.getItem(k)||"";if(!d){d="d"+Math.random().toString(36).slice(2,12)+Date.now().toString(36);localStorage.setItem(k,d);}}catch(e){}
   return d||("d"+Math.random().toString(36).slice(2,12));
 }
-function track(kind,pid){try{API.track(kind,pid||null,device());}catch(e){}}
+function track(kind,pid,detail){try{API.track(kind,pid||null,device(),detail);}catch(e){}}
 function trackVisit(){
   var day=new Date().toISOString().slice(0,10);
   try{if(localStorage.getItem("mb-visit")===day)return;localStorage.setItem("mb-visit",day);}catch(e){}
@@ -583,8 +603,8 @@ function showHome(){
 
 /* ---------- Toutes les catégories ---------- */
 function showCategories(){
-  var h='<button class="back" id="back">← Retour</button><h1 tabindex="-1" id="ptitle">Toutes les catégories</h1><div class="tiles">';
-  CATS.forEach(function(c){h+='<button class="tile" data-k="'+c[0]+'"><span class="em" aria-hidden="true">'+c[2]+'</span><span>'+esc(c[1])+'</span></button>';});
+  var h='<button class="back" id="back">← Retour</button><h1 tabindex="-1" id="ptitle">Toutes les catégories</h1><div class="ctiles">';
+  CATS.forEach(function(c){h+='<button class="ctile" data-k="'+c[0]+'"><span class="em" aria-hidden="true">'+c[2]+'</span><span>'+esc(c[1])+'</span></button>';});
   view.innerHTML=h+'</div>';
   try{$("ptitle").focus({preventScroll:true});}catch(e){}
   $("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/";};
@@ -926,6 +946,36 @@ function chartSvg(daily){
   return '<svg class="chart" viewBox="0 0 320 '+(top+H+24)+'" role="img" aria-label="'+esc("Visiteurs et commandes lancées sur 7 jours. "+alt.join(". "))+'">'+g+'</svg>'+
     '<div class="lg"><span><i style="background:var(--c1)"></i>Visiteurs</span><span><i style="background:var(--c2)"></i>Commandes lancées</span></div>';
 }
+var RVS=[["featured","À la une"],["badge","Badge vérifié"],["banner","Bannière"],["autre","Autre"]];
+var RVM=["Orange Money","M-Pesa","Airtel Money","Afrimoney","Espèces","Autre"];
+function rvLabel(k){for(var i=0;i<RVS.length;i++)if(RVS[i][0]===k)return RVS[i][1];return k;}
+function sumBy(list){var t={USD:0,CDF:0};list.forEach(function(r){t[r.currency==="CDF"?"CDF":"USD"]+=Number(r.amount)||0;});return t;}
+function totTxt(t){var a=[];if(t.USD)a.push(money({price:t.USD,currency:"USD"}));if(t.CDF)a.push(money({price:t.CDF,currency:"CDF"}));return a.length?a.join(" + "):"0 $";}
+function revenueHtml(d){
+  var h='<h2>Mes revenus</h2>';
+  if(d.revenues===null){return h+'<p class="note">Le carnet de revenus n\'est pas encore prêt : exécute <b>migration-v11.sql</b> dans Supabase.</p>';}
+  var rv=d.revenues||[],mk=new Date().toISOString().slice(0,7),month=rv.filter(function(r){return String(r.paid_at).slice(0,7)===mk;});
+  h+='<div class="tiles"><div class="tile"><b style="font-size:20px">'+esc(totTxt(sumBy(month)))+'</b><span>Ce mois</span><small>'+month.length+' paiement'+(month.length>1?"s":"")+'</small></div><div class="tile"><b style="font-size:20px">'+esc(totTxt(sumBy(rv)))+'</b><span>Total depuis le début</span><small>'+rv.length+' paiement'+(rv.length>1?"s":"")+'</small></div></div>';
+  h+='<p class="rvt">Ajouter un paiement reçu</p><div class="rvf">'+
+    '<div class="field"><label for="rvs">Service</label><select id="rvs">'+RVS.map(function(x){return '<option value="'+x[0]+'">'+x[1]+'</option>';}).join("")+'</select></div>'+
+    '<div class="field"><label for="rvn">Vendeur</label><input id="rvn" type="text" maxlength="80" list="rvl" placeholder="Nom"><datalist id="rvl">'+d.profiles.slice(0,100).map(function(x){return '<option value="'+esc(x.name||"")+'">';}).join("")+'</datalist></div>'+
+    '<div class="field"><label for="rva">Montant</label><input id="rva" type="number" inputmode="decimal" min="0" step="any" placeholder="Ex. 5"></div>'+
+    '<div class="field"><label for="rvc">Devise</label><select id="rvc"><option value="USD">Dollars ($)</option><option value="CDF">Francs (FC)</option></select></div>'+
+    '<div class="field"><label for="rvm">Reçu par</label><select id="rvm">'+RVM.map(function(x){return '<option>'+x+'</option>';}).join("")+'</select></div>'+
+    '<div class="field"><label for="rvd">Date</label><input id="rvd" type="date" value="'+new Date().toISOString().slice(0,10)+'"></div>'+
+    '<div class="field full"><label for="rvt">Note (facultatif)</label><input id="rvt" type="text" maxlength="150" placeholder="Ex. 7 jours à la une"></div></div>'+
+    '<div class="err" id="rverr" role="alert"></div><button class="btn" id="rvgo" type="button">Enregistrer ce paiement</button>';
+  h+=rv.slice(0,30).map(function(r){return '<div class="hd"><div class="t"><span>'+esc(rvLabel(r.kind))+(r.seller_label?' · '+esc(r.seller_label):'')+'</span><span>'+esc(money({price:r.amount,currency:r.currency}))+'</span></div><small>'+esc([dstr(r.paid_at),r.method,r.note].filter(Boolean).join(" · "))+'</small><div class="acts"><button class="btn alt sm" data-rd="'+esc(r.id)+'">Supprimer</button></div></div>';}).join("")||'<p class="note">Aucun paiement noté pour le moment.</p>';
+  return h;
+}
+function payStatsHtml(d,st){
+  var cnt={},num={};
+  d.profiles.forEach(function(p){var m=payMap(p.payments);for(var k in m){cnt[k]=(cnt[k]||0)+1;if(m[k])num[k]=(num[k]||0)+1;}});
+  var by=st.pay_copy_by||{},h='<h2>Moyens de paiement</h2>';
+  h+=PAY.map(function(p){var c=by[p[0]]||0;return '<div class="hd"><div class="t"><span>'+esc(p[1])+'</span><span>'+(cnt[p[0]]||0)+(cnt[p[0]]>1?' vendeurs':' vendeur')+'</span></div>'+(MOBILE.indexOf(p[0])>=0?'<small>'+(num[p[0]]||0)+' avec numéro affiché · '+c+' copie'+(c>1?'s':'')+' du numéro (7 jours)</small>':'')+'</div>';}).join("");
+  h+='<p class="note">« Copie du numéro » = un acheteur a appuyé sur Copier. Ce n\'est pas un paiement confirmé, mais ça montre quels moyens les acheteurs utilisent. Ces chiffres serviront de preuve auprès d\'un opérateur ou d\'un agrégateur de paiement.</p>';
+  return h;
+}
 async function showAdmin(rid,keep){
   if(!cur){location.hash="#/compte";return;}
   view.innerHTML=loading();
@@ -950,6 +1000,8 @@ async function showAdmin(rid,keep){
     '<div class="tile"><b>'+ord+'</b><span>Commandes lancées</span><small>'+(st.orders_wa_7d||0)+' WhatsApp · '+(st.orders_nv_7d||0)+' Nuvalk</small></div></div>';
   h+='<h2>7 derniers jours</h2>'+chartSvg(st.daily&&st.daily.length?st.daily:[]);
   h+='<p class="note">Un visiteur = un téléphone ou navigateur, compté une fois par jour. Une commande lancée = un clic sur « Commander » : la vente, le paiement et la livraison se font sur WhatsApp ou Nuvalk, donc tu vois l\'intérêt des acheteurs, pas les ventes réelles. Les acheteurs n\'ont pas de compte : seuls les vendeurs sont des inscrits.</p>';
+  h+=revenueHtml(d);
+  h+=payStatsHtml(d,st);
   var bc=st.by_category||{},cl=CATS.concat(LEGACY).filter(function(c){return bc[c[0]];});
   h+='<h2>Produits par catégorie</h2>'+(cl.length?cl.map(function(c){return '<div class="hd"><div class="t"><span>'+esc(c[1])+'</span><span>'+bc[c[0]]+'</span></div></div>';}).join(""):'<p class="note">Aucun produit en vente.</p>');
   h+='<h2>Produits les plus regardés</h2>'+((st.top&&st.top.length)?st.top.map(function(x,i){return '<a class="hd" style="display:block;text-decoration:none" href="#/p/'+encodeURIComponent(x.id)+'"><div class="t"><span>'+(i+1)+'. '+esc(x.title)+'</span><span>'+x.views+(x.views>1?' vues':' vue')+'</span></div></a>';}).join(""):'<p class="note">Pas encore de vues cette semaine.</p>');
@@ -969,7 +1021,17 @@ async function showAdmin(rid,keep){
   view.innerHTML=h;
   if(keep)window.scrollTo(0,keep);else $("ptitle").focus({preventScroll:true});
   $("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/compte";};
+  if($("rvgo"))$("rvgo").onclick=async function(){
+    var amt=parseFloat($("rva").value),err=$("rverr");err.textContent="";
+    if(!(amt>0)){err.textContent="Écris le montant reçu.";$("rva").focus();return;}
+    var dt=$("rvd").value||new Date().toISOString().slice(0,10);
+    this.disabled=true;
+    try{await API.revAdd({kind:$("rvs").value,seller_label:$("rvn").value.trim().slice(0,80),amount:amt,currency:$("rvc").value,method:$("rvm").value,note:$("rvt").value.trim().slice(0,150),paid_at:dt});toast("Paiement enregistré.");showAdmin(routeId,window.scrollY);}
+    catch(ex){err.textContent=friendly(ex);this.disabled=false;}
+  };
   view.onclick=async function(e){
+    var rd=e.target.closest("[data-rd]");
+    if(rd){if(rd.getAttribute("data-c")!=="1"){rd.setAttribute("data-c","1");rd.textContent="Confirmer";setTimeout(function(){if(rd.isConnected){rd.removeAttribute("data-c");rd.textContent="Supprimer";}},4000);return;}rd.disabled=true;try{await API.revDel(rd.getAttribute("data-rd"));toast("Paiement supprimé.");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));rd.disabled=false;}return;}
     var vf=e.target.closest("[data-vf]"),ft=e.target.closest("[data-ft]");
     if(vf){vf.disabled=true;try{await API.adminVerify(vf.getAttribute("data-vf"),vf.getAttribute("data-v")==="1");S.loaded=false;toast(vf.getAttribute("data-v")==="1"?"Badge accordé.":"Badge retiré.");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));vf.disabled=false;}return;}
     if(ft){ft.disabled=true;var dd=+ft.getAttribute("data-d");try{await API.adminFeature(ft.getAttribute("data-ft"),dd);S.loaded=false;toast(dd>0?"Mis à la une pour "+dd+" jours.":"Retiré de la une.");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));ft.disabled=false;}return;}
@@ -1002,6 +1064,12 @@ function route(){
   else{location.hash="#/";return;}
   if(r!=="")window.scrollTo(0,0);
 }
+document.addEventListener("click",function(e){
+  var b=e.target.closest("[data-copy]");if(!b)return;
+  var m=/^#\/p\/([^/]+)/.exec(location.hash);
+  track("pay_copy",m?decodeURIComponent(m[1]):null,b.getAttribute("data-pay"));
+  copy(b.getAttribute("data-copy")).then(function(ok){toast(ok?"Numéro copié.":"Copie le numéro à la main.");});
+});
 window.addEventListener("hashchange",route);
 $("homeBtn").onclick=function(){if(location.hash&&location.hash!=="#/"&&location.hash!=="#"){location.hash="#/";}else{S.q="";S.cat="";S.loaded=false;showHome();window.scrollTo(0,0);}};
 $("sellBtn").onclick=function(){location.hash="#/compte";};
