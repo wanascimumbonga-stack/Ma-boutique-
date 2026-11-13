@@ -37,6 +37,14 @@ textarea{min-height:96px;resize:vertical}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
 .chips[hidden]{display:none}
+.disc2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.disc2 a{display:flex;align-items:center;justify-content:center;min-height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-weight:700;text-decoration:none}
+.fw.on{border-color:var(--bd);color:var(--bd)}
+.rank{display:flex;align-items:center;gap:12px;min-height:60px;border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-top:8px;text-decoration:none;color:var(--ink);background:var(--card)}
+.rk{font-size:26px;width:40px;text-align:center;flex:none;font-weight:800}
+.rn{flex:1;min-width:0;display:flex;flex-direction:column}
+.rn small{color:var(--mute)}
+.rp{font-weight:800;white-space:nowrap}
 .disc{display:flex;align-items:center;justify-content:center;min-height:48px;margin-top:12px;border-radius:12px;background:linear-gradient(90deg,#E8335A,#F59E0B);color:#fff;font-weight:800;text-decoration:none}
 .lkc{position:absolute;right:8px;top:8px;background:rgba(0,0,0,.6);color:#fff;font-weight:700;font-size:12px;border-radius:999px;padding:2px 9px}
 .lkbtn .h{color:var(--mute)}
@@ -341,10 +349,11 @@ async function http(method,url,body,extra,raw){
   var ct=r.headers.get("content-type")||"";
   return ct.indexOf("json")>=0?r.json():null;
 }
-var PCOLS="id,name,whatsapp,nuvalk,city,verified,payments";
+var PCOLS="id,name,whatsapp,nuvalk,city,verified,payments,followers";
 var SEL="select=*,profiles("+PCOLS+")",SELI="select=*,profiles!inner("+PCOLS+")";
+function okId(x){return /^[A-Za-z0-9_-]{1,40}$/.test(String(x));}
 function cityOk(c){return c==="Kinshasa"||COMMUNES.indexOf(c)>=0||VILLES.indexOf(c)>=0;}
-function norm(r){var s=r.profiles||{};return{id:r.id,title:r.title,description:r.description||"",price:Number(r.price),currency:r.currency||"FC",category:r.category,sizes:r.sizes||"",photos:r.photos||[],status:r.status,created_at:r.created_at,featured_until:r.featured_until||null,subcategory:r.subcategory||"",likes:Number(r.likes)||0,video:r.video_url||"",seller:{id:r.seller_id||s.id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",payments:s.payments||"",verified:!!s.verified}};}
+function norm(r){var s=r.profiles||{};return{id:r.id,title:r.title,description:r.description||"",price:Number(r.price),currency:r.currency||"FC",category:r.category,sizes:r.sizes||"",photos:r.photos||[],status:r.status,created_at:r.created_at,featured_until:r.featured_until||null,subcategory:r.subcategory||"",likes:Number(r.likes)||0,video:r.video_url||"",seller:{id:r.seller_id||s.id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",payments:s.payments||"",followers:Number(s.followers)||0,verified:!!s.verified}};}
 function pathOf(url){var m=String(url).split("/storage/v1/object/public/photos/");return m.length===2?m[1]:"";}
 var Remote={
   async list(o){
@@ -354,16 +363,17 @@ var Remote={
     if(o.city&&cityOk(o.city)){SX=SELI;f+="&profiles.city=ilike."+encodeURIComponent("*"+o.city+"*");}
     if(o.sub)f+="&subcategory=eq."+encodeURIComponent(o.sub);
     if(o.seller)f+="&seller_id=eq."+encodeURIComponent(o.seller);
+    if(o.sellers&&o.sellers.length)f+="&seller_id=in.("+o.sellers.filter(okId).join(",")+")";
     var q0=(o.q||"").replace(/[,()*%\\:]/g," ").trim();
     if(q0){var pat=encodeURIComponent("*"+q0+"*");f+="&or=(title.ilike."+pat+",description.ilike."+pat+",subcategory.ilike."+pat+")";}
     var rows=await http("GET",BASE+"/rest/v1/products?"+SX+"&status=eq.active"+f+"&order=created_at.desc&limit="+(PAGE+1)+"&offset="+(o.offset||0));
     var feat=[];
-    if(!(o.offset>0)&&!o.seller){
+    if(!(o.offset>0)&&!o.seller&&!o.sellers){
       try{var fr=await http("GET",BASE+"/rest/v1/products?"+SX+"&status=eq.active&featured_until=gt."+encodeURIComponent(new Date().toISOString())+f+"&order=featured_until.desc&limit=6");feat=(fr||[]).map(norm).filter(isFeat);}catch(e){}
     }
     return{items:rows.slice(0,PAGE).map(norm),more:rows.length>PAGE,used:Math.min(rows.length,PAGE),feat:feat};
   },
-  async seller(id){var rows=await http("GET",BASE+"/rest/v1/profiles?select="+PCOLS+"&id=eq."+encodeURIComponent(id));var r=rows&&rows[0];return r?{id:r.id,name:r.name||"",whatsapp:r.whatsapp||"",nuvalk:r.nuvalk||"",city:r.city||"",payments:r.payments||"",verified:!!r.verified}:null;},
+  async seller(id){var rows=await http("GET",BASE+"/rest/v1/profiles?select="+PCOLS+"&id=eq."+encodeURIComponent(id));var r=rows&&rows[0];return r?{id:r.id,name:r.name||"",whatsapp:r.whatsapp||"",nuvalk:r.nuvalk||"",city:r.city||"",payments:r.payments||"",followers:Number(r.followers)||0,verified:!!r.verified}:null;},
   async get(id){var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&id=eq."+encodeURIComponent(id));return rows&&rows[0]?norm(rows[0]):null;},
   async mine(){var rows=await http("GET",BASE+"/rest/v1/products?"+SEL+"&seller_id=eq."+encodeURIComponent(cur.id)+"&order=created_at.desc");return rows.map(norm);},
   async create(p){var rows=await http("POST",BASE+"/rest/v1/products?"+SEL,Object.assign(p.video_url?{video_url:p.video_url}:{},{seller_id:cur.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,subcategory:p.subcategory||"",sizes:p.sizes,photos:p.photos,status:"active"}),{Prefer:"return=representation"});return norm(rows[0]);},
@@ -377,6 +387,8 @@ var Remote={
     var rv=[];try{rv=await http("GET",BASE+"/rest/v1/revenues?select=*&order=paid_at.desc,created_at.desc&limit=500");}catch(e){rv=null;}
     return{stats:st||{},profiles:pr||[],products:pd||[],revenues:rv};
   },
+  async follow(id,on){var r=await http("POST",BASE+"/rest/v1/rpc/set_follow",{p_seller:id,p_device:device(),p_on:!!on});return Number(r);},
+  async topSellers(){return await http("POST",BASE+"/rest/v1/rpc/top_sellers",{});},
   async like(id,on){var r=await http("POST",BASE+"/rest/v1/rpc/set_like",{p_product:id,p_device:device(),p_on:!!on});return Number(r);},
   async sellerStats(){return await http("POST",BASE+"/rest/v1/rpc/seller_stats",{});},
   async revAdd(r){var rows=await http("POST",BASE+"/rest/v1/revenues",r,{Prefer:"return=representation"});return rows&&rows[0];},
@@ -461,7 +473,7 @@ function dload(){
   return d;
 }
 function dsave(d){try{localStorage.setItem(DKEY,JSON.stringify(d));}catch(e){throw new Error("Le téléphone n'a plus de place pour la démonstration.");}}
-function dnorm(d,p){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];var s=u?u.profile:{};return{id:p.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos.slice(),status:p.status,created_at:p.created_at,featured_until:p.featured_until||null,subcategory:p.subcategory||"",likes:Number(p.likes)||0,video:p.video_url||"",seller:{id:p.seller_id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",payments:s.payments||"",verified:!!s.verified}};}
+function dnorm(d,p){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];var s=u?u.profile:{};return{id:p.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,sizes:p.sizes,photos:p.photos.slice(),status:p.status,created_at:p.created_at,featured_until:p.featured_until||null,subcategory:p.subcategory||"",likes:Number(p.likes)||0,video:p.video_url||"",seller:{id:p.seller_id,name:s.name||"",whatsapp:s.whatsapp||"",nuvalk:s.nuvalk||"",city:s.city||"",payments:s.payments||"",followers:Number(s.followers)||0,verified:!!s.verified}};}
 function byNew(a,b){return a.created_at<b.created_at?1:-1;}
 function b2d(blob){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result);};r.onerror=function(){rej(new Error("Photo illisible."));};r.readAsDataURL(blob);});}
 function ymd(a){return a.getFullYear()+"-"+("0"+(a.getMonth()+1)).slice(-2)+"-"+("0"+a.getDate()).slice(-2);}
@@ -488,11 +500,11 @@ function dstats(d){
 var Demo={
   async list(o){
     var d=dload(),q=(o.q||"").toLowerCase().trim(),off=o.offset||0;
-    var rows=d.products.filter(function(p){return p.status==="active"&&(!o.cat||p.category===o.cat)&&(!o.sub||p.subcategory===o.sub)&&(!o.seller||p.seller_id===o.seller)&&(!o.city||(function(){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];return !!u&&String((u.profile&&u.profile.city)||"").toLowerCase().indexOf(o.city.toLowerCase())>=0;})())&&(!q||(p.title+" "+p.description+" "+(p.subcategory||"")).toLowerCase().indexOf(q)>=0);}).sort(byNew).map(function(p){return dnorm(d,p);});
-    var feat=(off>0||o.seller)?[]:rows.filter(isFeat).sort(function(a,b){return a.featured_until<b.featured_until?1:-1;}).slice(0,6);
+    var rows=d.products.filter(function(p){return p.status==="active"&&(!o.cat||p.category===o.cat)&&(!o.sub||p.subcategory===o.sub)&&(!o.seller||p.seller_id===o.seller)&&(!o.sellers||o.sellers.indexOf(p.seller_id)>=0)&&(!o.city||(function(){var u=d.users.filter(function(x){return x.id===p.seller_id;})[0];return !!u&&String((u.profile&&u.profile.city)||"").toLowerCase().indexOf(o.city.toLowerCase())>=0;})())&&(!q||(p.title+" "+p.description+" "+(p.subcategory||"")).toLowerCase().indexOf(q)>=0);}).sort(byNew).map(function(p){return dnorm(d,p);});
+    var feat=(off>0||o.seller||o.sellers)?[]:rows.filter(isFeat).sort(function(a,b){return a.featured_until<b.featured_until?1:-1;}).slice(0,6);
     return{items:rows.slice(off,off+PAGE),more:rows.length>off+PAGE,used:rows.slice(off,off+PAGE).length,feat:feat};
   },
-  async seller(id){var d=dload(),u=d.users.filter(function(x){return x.id===id;})[0];if(!u)return null;var p=u.profile||{};return{id:u.id,name:p.name||"",whatsapp:p.whatsapp||"",nuvalk:p.nuvalk||"",city:p.city||"",payments:p.payments||"",verified:!!p.verified};},
+  async seller(id){var d=dload(),u=d.users.filter(function(x){return x.id===id;})[0];if(!u)return null;var p=u.profile||{};return{id:u.id,name:p.name||"",whatsapp:p.whatsapp||"",nuvalk:p.nuvalk||"",city:p.city||"",payments:p.payments||"",followers:Number(p.followers)||0,verified:!!p.verified};},
   async get(id){var d=dload(),p=d.products.filter(function(x){return x.id===id;})[0];return p?dnorm(d,p):null;},
   async mine(){var d=dload();return d.products.filter(function(p){return p.seller_id===cur.id;}).sort(byNew).map(function(p){return dnorm(d,p);});},
   async create(p){var d=dload();var r={id:"d"+Date.now(),seller_id:cur.id,title:p.title,description:p.description,price:p.price,currency:p.currency,category:p.category,subcategory:p.subcategory||"",video_url:p.video_url||"",likes:0,sizes:p.sizes,photos:p.photos,status:"active",created_at:new Date().toISOString()};d.products.push(r);dsave(d);return dnorm(d,r);},
@@ -508,13 +520,28 @@ var Demo={
       products:d.products.map(function(p){return{id:p.id,seller_id:p.seller_id,title:p.title,price:p.price,currency:p.currency,category:p.category,status:p.status,photos:p.photos,created_at:p.created_at,featured_until:p.featured_until||null};})
     };
   },
+  async follow(id,on){var d=dload(),u=d.users.filter(function(x){return x.id===id;})[0];if(!u)return 0;u.profile.followers=Math.max(0,(u.profile.followers||0)+(on?1:-1));dsave(d);return u.profile.followers;},
+  async topSellers(){
+    var d=dload(),ev=d.events||[],now=Date.now(),W=7*864e5;
+    var out=d.users.map(function(u){
+      var mine=d.products.filter(function(p){return p.seller_id===u.id&&p.status==="active";});
+      if(!mine.length)return null;
+      var ids=mine.map(function(p){return p.id;}),sc=0;
+      ev.forEach(function(e){if(ids.indexOf(e.product_id)<0||now-new Date(e.created_at).getTime()>=W)return;if(e.kind==="view")sc+=1;else if(e.kind==="order_wa"||e.kind==="order_nv")sc+=5;});
+      mine.forEach(function(p){sc+=3*(p.likes||0);});
+      var pr=u.profile||{};
+      return{id:u.id,name:pr.name||"",city:pr.city||"",verified:!!pr.verified,followers:pr.followers||0,score:sc};
+    }).filter(function(x){return x&&x.score>0;});
+    out.sort(function(a,b){return b.score-a.score||b.followers-a.followers;});
+    return out.slice(0,10);
+  },
   async like(id,on){var d=dload(),p=d.products.filter(function(x){return x.id===id;})[0];if(!p)return 0;p.likes=Math.max(0,(p.likes||0)+(on?1:-1));dsave(d);return p.likes;},
   async sellerStats(){
     var d=dload(),ev=d.events||[],now=Date.now(),W=7*864e5,mine=d.products.filter(function(p){return p.seller_id===cur.id;});
     function cnt(id,ks){return ev.filter(function(e){return e.product_id===id&&ks.indexOf(e.kind)>=0&&now-new Date(e.created_at).getTime()<W;}).length;}
     var items=mine.map(function(p){return{id:p.id,title:p.title,likes:p.likes||0,views:cnt(p.id,["view"]),orders:cnt(p.id,["order_wa","order_nv"])};}).sort(function(a,b){return b.views-a.views;}).slice(0,10);
     var sum=function(k){return items.reduce(function(t,x){return t+x[k];},0);};
-    return{views_7d:sum("views"),orders_7d:sum("orders"),likes_total:mine.reduce(function(t,p){return t+(p.likes||0);},0),items:items};
+    return{followers:((d.users.filter(function(u){return u.id===cur.id;})[0]||{profile:{}}).profile.followers)||0,views_7d:sum("views"),orders_7d:sum("orders"),likes_total:mine.reduce(function(t,p){return t+(p.likes||0);},0),items:items};
   },
   async revAdd(r){var d=dload();d.revenues=d.revenues||[];var x=Object.assign({id:"r"+Date.now(),created_at:new Date().toISOString()},r);d.revenues.push(x);dsave(d);return x;},
   async revDel(id){var d=dload();d.revenues=(d.revenues||[]).filter(function(x){return x.id!==id;});dsave(d);},
@@ -634,7 +661,7 @@ async function loadList(reset){
   S.loading=false;paintGrid();
 }
 function showHome(){
-  view.innerHTML='<form class="search" id="sf" role="search"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Que cherches-tu ?" aria-label="Rechercher un produit" value="'+esc(S.q)+'"><button class="go" type="submit">Chercher</button></form><a class="disc" href="#/decouvrir">✨ Découvrir en glissant</a><select id="cf" class="cf" aria-label="Filtrer par commune ou ville"><option value="">Toutes les communes et villes</option><option value="Kinshasa">Toute la ville de Kinshasa</option><optgroup label="Communes de Kinshasa">'+COMMUNES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup><optgroup label="Autres villes">'+VILLES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup></select><div class="chips" id="chips" role="group" aria-label="Catégories"></div><div class="chips" id="subs" role="group" aria-label="Sous-catégories" hidden></div><div style="text-align:center"><a class="link" href="#/categories">Voir toutes les catégories</a></div><div id="grid" class="grid" aria-live="polite"></div><div id="more"></div><footer>Wanasci Global<br>Les visites sont comptées de façon anonyme.</footer>';
+  view.innerHTML='<form class="search" id="sf" role="search"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Que cherches-tu ?" aria-label="Rechercher un produit" value="'+esc(S.q)+'"><button class="go" type="submit">Chercher</button></form><a class="disc" href="#/decouvrir">✨ Découvrir en glissant</a><div class="disc2"><a href="#/abonnements">★ Mes vendeurs</a><a href="#/top">🏆 Top vendeurs</a></div><select id="cf" class="cf" aria-label="Filtrer par commune ou ville"><option value="">Toutes les communes et villes</option><option value="Kinshasa">Toute la ville de Kinshasa</option><optgroup label="Communes de Kinshasa">'+COMMUNES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup><optgroup label="Autres villes">'+VILLES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup></select><div class="chips" id="chips" role="group" aria-label="Catégories"></div><div class="chips" id="subs" role="group" aria-label="Sous-catégories" hidden></div><div style="text-align:center"><a class="link" href="#/categories">Voir toutes les catégories</a></div><div id="grid" class="grid" aria-live="polite"></div><div id="more"></div><footer>Wanasci Global<br>Les visites sont comptées de façon anonyme.</footer>';
   paintChips();
   $("cf").value=S.city;
   $("cf").onchange=function(){S.city=$("cf").value;loadList(true);};
@@ -677,6 +704,78 @@ function shareProduct(p){
   var url=productLink(p.id),text=p.title+" – "+money(p)+" sur Ma boutique";
   if(navigator.share){navigator.share({title:p.title,text:text,url:url}).catch(function(){});}
   else copy(text+"\n"+url).then(function(ok){toast(ok?"Lien copié.":"Copie le lien à la main.");});
+}
+
+/* ---------- Suivre un vendeur ---------- */
+var FKEY="mb-follows",FOLLOWS={},FCOUNT={};
+try{FOLLOWS=JSON.parse(localStorage.getItem(FKEY)||"{}")||{};}catch(e){FOLLOWS={};}
+function saveFollows(){try{var k=Object.keys(FOLLOWS);if(k.length>100)k.slice(0,k.length-100).forEach(function(x){delete FOLLOWS[x];});localStorage.setItem(FKEY,JSON.stringify(FOLLOWS));}catch(e){}}
+function folTxt(n){n=Number(n)||0;return n+(n>1?" abonnés":" abonné");}
+function paintFollow(id,n,on){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-fw="'+id+'"]'),function(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");b.textContent=on?"✓ Abonné":"＋ Suivre";});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-fc="'+id+'"]'),function(c){c.textContent=folTxt(n);});
+}
+async function toggleFollow(id){
+  var on=!FOLLOWS[id],n=Math.max(0,(FCOUNT[id]||0)+(on?1:-1));
+  FCOUNT[id]=n;if(on)FOLLOWS[id]=1;else delete FOLLOWS[id];
+  saveFollows();paintFollow(id,n,on);
+  if(on)toast("Tu suis ce vendeur. Ses nouveautés sont dans « Mes vendeurs ».");
+  try{var r=await API.follow(id,on);if(isFinite(r)&&r>=0){FCOUNT[id]=r;paintFollow(id,r,!!FOLLOWS[id]);}}catch(e){}
+}
+function shareText(text,url,title){
+  if(navigator.share){navigator.share({title:title||"Ma boutique",text:text,url:url}).catch(function(){});}
+  else copy(text+"\n"+url).then(function(ok){toast(ok?"Lien copié.":"Copie le lien à la main.");});
+}
+async function showFollowing(rid){
+  var ids=Object.keys(FOLLOWS).filter(okId).slice(0,50);
+  var h='<button class="back" id="back">← Retour</button><h1 tabindex="-1" id="ptitle">Mes vendeurs</h1>';
+  function wireBack(){$("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/";};}
+  if(!ids.length){
+    view.innerHTML=h+'<div class="empty"><p>Tu ne suis encore aucun vendeur.</p><p>Ouvre la page d\'un vendeur et appuie sur « ＋ Suivre ». Ses nouveautés apparaîtront ici.</p><p><a class="link" href="#/top">Voir les meilleurs vendeurs de la semaine</a></p></div>';
+    wireBack();return;
+  }
+  view.innerHTML=h+loading();wireBack();
+  var first;
+  try{first=await API.list({sellers:ids,offset:0});}
+  catch(e){if(rid!==routeId)return;view.innerHTML=h+errBox(friendly(e));wireBack();$("retry").onclick=function(){showFollowing(rid);};return;}
+  if(rid!==routeId)return;
+  var L={items:first.items,off:first.used!=null?first.used:first.items.length,more:first.more,busy:false};
+  view.innerHTML=h+'<p class="note">Les derniers produits des vendeurs que tu suis ('+ids.length+').</p><div id="sg" class="grid"></div><div id="sm"></div>';
+  wireBack();
+  function paint(){
+    $("sg").innerHTML=L.items.map(cardHtml).join("");
+    $("sm").innerHTML=(L.items.length?"":'<p class="note">Ces vendeurs n\'ont pas de produit en vente pour le moment.</p>')+(L.more?'<button class="btn alt" id="smb" style="max-width:260px;margin:16px auto 0">'+(L.busy?"Chargement…":"Voir plus")+'</button>':"");
+    if($("smb"))$("smb").onclick=async function(){
+      if(L.busy)return;L.busy=true;paint();
+      try{var r=await API.list({sellers:ids,offset:L.off});var seen={};L.items.forEach(function(x){seen[x.id]=1;});L.items=L.items.concat(r.items.filter(function(x){return !seen[x.id];}));L.off+=(r.used!=null?r.used:r.items.length);L.more=r.more;}
+      catch(e){toast(friendly(e));}
+      L.busy=false;if(rid===routeId)paint();
+    };
+  }
+  paint();
+}
+
+/* ---------- Vendeurs de la semaine ---------- */
+async function showTop(rid){
+  var h='<button class="back" id="back">← Retour</button><h1 tabindex="-1" id="ptitle">🏆 Vendeurs de la semaine</h1><p class="note">Classement des 7 derniers jours : une vue = 1 point, un cœur = 3 points, un clic sur Commander = 5 points.</p>';
+  function wireBack(){$("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/";};}
+  view.innerHTML=h+loading();wireBack();
+  var list=null;
+  try{list=await API.topSellers();}catch(e){}
+  if(rid!==routeId)return;
+  if(!Array.isArray(list)){view.innerHTML=h+'<div class="empty"><p>Le classement arrive bientôt.</p></div>';wireBack();return;}
+  if(!list.length){view.innerHTML=h+'<div class="empty"><p>Le classement se remplit dès que les produits sont vus et aimés.</p><p>Publie un produit et partage ta boutique pour être le premier !</p><a class="btn" href="#/nouveau">Vendre un produit</a></div>';wireBack();return;}
+  var medals=["🥇","🥈","🥉"],mine=-1;
+  h+=list.map(function(x,i){
+    if(cur&&x.id===cur.id)mine=i;
+    return '<a class="rank" href="#/vendeur/'+encodeURIComponent(x.id)+'"><span class="rk">'+(medals[i]||(i+1))+'</span><span class="rn"><b>'+esc(x.name||"Vendeur")+(x.verified?" "+VB:"")+'</b><small>'+esc([x.city,folTxt(x.followers)].filter(Boolean).join(" · "))+'</small></span><span class="rp">'+x.score+' pts</span></a>';
+  }).join("");
+  if(mine>=0)h+='<button class="btn" id="shm" style="margin-top:16px">Partager mon classement (n°'+(mine+1)+')</button>';
+  h+='<button class="btn alt" id="sht" style="margin-top:10px">Partager le classement</button>';
+  view.innerHTML=h;wireBack();
+  var url=location.href.split("#")[0]+"#/top";
+  $("sht").onclick=function(){shareText("🏆 Les meilleurs vendeurs de la semaine sur Ma boutique",url,"Vendeurs de la semaine");};
+  if($("shm"))$("shm").onclick=function(){shareText("🏆 Je suis n°"+(mine+1)+" des vendeurs de la semaine sur Ma boutique !",url,"Mon classement");};
 }
 
 /* ---------- Découvrir (défilement plein écran) ---------- */
@@ -767,10 +866,11 @@ async function showSeller(id,rid){
   sel=first.items[0]&&first.items[0].seller;
   if(!sel){try{sel=await API.seller(id);}catch(e){}if(rid!==routeId)return;}
   if(!sel){view.innerHTML=notFound().replace("Produit introuvable","Boutique introuvable").replace("Il a peut-être été vendu ou retiré.","Ce lien ne mène à aucune boutique.");return;}
-  var L={items:first.items,off:first.used!=null?first.used:first.items.length,more:first.more,busy:false},num=waNum(sel.whatsapp);
+  var L={items:first.items,off:first.used!=null?first.used:first.items.length,more:first.more,busy:false},num=waNum(sel.whatsapp),ownS=!!(cur&&sel.id===cur.id);
+  FCOUNT[id]=sel.followers||0;
   var h='<button class="back" id="back">← Retour</button>';
-  h+='<div class="seller"><h1 tabindex="-1" id="ptitle" style="margin:0">'+esc(sel.name||"Vendeur")+'</h1>'+(sel.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(sel.city?'<div class="meta">'+esc(sel.city)+'</div>':'')+payHtml(sel.payments)+'</div>';
-  h+='<div class="orow" style="margin-top:12px">'+(num?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+num+'?text='+encodeURIComponent("Bonjour "+(sel.name||"")+", j'ai vu votre boutique sur Ma boutique.")+'">WhatsApp</a>':'')+'<button class="btn alt" id="shs">Partager</button></div>';
+  h+='<div class="seller"><h1 tabindex="-1" id="ptitle" style="margin:0">'+esc(sel.name||"Vendeur")+'</h1>'+(sel.verified?'<div class="vf">'+VB+' Vendeur vérifié</div>':'')+(sel.city?'<div class="meta">'+esc(sel.city)+'</div>':'')+'<div class="meta"><span class="fcnt" data-fc="'+esc(id)+'">'+folTxt(sel.followers||0)+'</span></div>'+payHtml(sel.payments)+'</div>';
+  h+='<div class="orow" style="margin-top:12px">'+(num?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+num+'?text='+encodeURIComponent("Bonjour "+(sel.name||"")+", j'ai vu votre boutique sur Ma boutique.")+'">WhatsApp</a>':'')+(ownS?'':'<button class="btn alt fw'+(FOLLOWS[id]?' on':'')+'" data-fw="'+esc(id)+'" aria-pressed="'+(FOLLOWS[id]?'true':'false')+'">'+(FOLLOWS[id]?'✓ Abonné':'＋ Suivre')+'</button>')+'<button class="btn alt" id="shs">Partager</button></div>';
   h+='<h2>Produits en vente</h2><div id="sg" class="grid"></div><div id="sm"></div>';
   view.innerHTML=h;
   try{$("ptitle").focus({preventScroll:true});}catch(e){}
@@ -787,6 +887,7 @@ async function showSeller(id,rid){
   paint();
   $("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/";};
   $("shs").onclick=function(){shareShop(id,sel.name);};
+  var fb=view.querySelector("[data-fw]");if(fb)fb.onclick=function(){toggleFollow(id);};
 }
 
 /* ---------- Fiche produit ---------- */
@@ -985,7 +1086,7 @@ async function showAccount(rid){
   API.sellerStats().then(function(st){
     var box=$("mystats");if(!box||rid!==routeId||!st)return;
     var v=st.views_7d||0,o=st.orders_7d||0,l=st.likes_total||0;
-    var t='<h2>Mes statistiques (7 jours)</h2><div class="tiles"><div class="tile"><b>'+v+'</b><span>Vues</span><small>de tes produits</small></div><div class="tile"><b>'+l+'</b><span>Cœurs ♥</span><small>au total</small></div><div class="tile"><b>'+o+'</b><span>Clics Commander</span><small>acheteurs intéressés</small></div></div>';
+    var t='<h2>Mes statistiques (7 jours)</h2><div class="tiles"><div class="tile"><b>'+v+'</b><span>Vues</span><small>de tes produits</small></div><div class="tile"><b>'+(st.followers||0)+'</b><span>Abonnés</span><small>te suivent</small></div><div class="tile"><b>'+l+'</b><span>Cœurs ♥</span><small>au total</small></div><div class="tile"><b>'+o+'</b><span>Clics Commander</span><small>acheteurs intéressés</small></div></div>';
     t+='<p class="note">'+(v>0?'🔥 Bravo ! '+v+(v>1?' personnes ont':' personne a')+' regardé tes produits cette semaine.':'Partage ta boutique pour recevoir tes premières vues.')+'</p>';
     if(st.items&&st.items.length)t+=st.items.slice(0,5).map(function(x){return '<a class="hd" style="display:block;text-decoration:none" href="#/p/'+encodeURIComponent(x.id)+'"><div class="t"><span>'+esc(x.title)+'</span><span>'+x.views+' vue'+(x.views>1?'s':'')+'</span></div><small>♥ '+x.likes+' · '+x.orders+' clic'+(x.orders>1?'s':'')+' Commander</small></a>';}).join("");
     box.innerHTML=t;
@@ -1211,6 +1312,8 @@ function route(){
   if(r==="")showHome();
   else if(r==="p"&&a[1])showDetail(decodeURIComponent(a[1]),rid);
   else if(r==="decouvrir")showDiscover(rid);
+  else if(r==="abonnements")showFollowing(rid);
+  else if(r==="top")showTop(rid);
   else if(r==="vendeur"&&a[1])showSeller(decodeURIComponent(a[1]),rid);
   else if(r==="compte")showAccount(rid);
   else if(r==="categories")showCategories();
