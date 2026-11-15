@@ -168,6 +168,8 @@ textarea{min-height:96px;resize:vertical}
 .foot{max-width:720px;margin:24px auto 90px;padding:0 16px;text-align:center;color:var(--mute);font-size:13px}
 .foot a{color:var(--mute);margin:0 8px;text-decoration:underline}
 .legal h2{margin-top:20px}.legal p,.legal li{font-size:15px;line-height:1.5}
+.dot{display:inline-block;min-width:20px;height:20px;line-height:20px;padding:0 6px;margin-left:6px;border-radius:999px;background:#E8335A;color:#fff;font-size:12px;font-weight:700;text-align:center;vertical-align:middle}
+.nb{background:var(--card);border:1px solid var(--line);border-left:4px solid #E8335A;border-radius:10px;padding:10px 12px;margin:10px 0;font-weight:600}
 .tip{background:var(--card);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:14px;margin-top:16px}
 .tabs{display:flex;gap:8px;margin:12px 0}
 .tabs .chip{flex:1}
@@ -688,7 +690,37 @@ function compress(file){
 }
 
 /* ---------- Barre et bannière ---------- */
-function updateBar(){$("sellBtn").textContent=cur?"Mon espace":"Vendre";}
+var NSELL=0,NFOL=0;
+function paintNotifs(){
+  var b=$("sellBtn");b.textContent=cur?"Mon espace":"Vendre";
+  if(cur&&NSELL>0){var d=document.createElement("span");d.className="dot";d.textContent=NSELL>99?"99+":String(NSELL);b.appendChild(d);b.setAttribute("aria-label","Mon espace, "+NSELL+" nouveauté"+(NSELL>1?"s":""));}else b.removeAttribute("aria-label");
+  var l=$("nfl");if(l){l.querySelector(".dot")&&l.querySelector(".dot").remove();if(NFOL>0){var e=document.createElement("span");e.className="dot";e.textContent=NFOL>99?"99+":String(NFOL);l.appendChild(e);}}
+}
+function updateBar(){paintNotifs();}
+function nGet(k){try{return JSON.parse(localStorage.getItem(k)||"null");}catch(e){return null;}}
+function nSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function sellerDiff(st){
+  var base=nGet("mb-nseller"),f=st.followers||0,l=st.likes_total||0;
+  if(!base||base.uid!==cur.id)return null;
+  return{f:Math.max(0,f-(base.f||0)),l:Math.max(0,l-(base.l||0))};
+}
+function sellerAck(st){nSet("mb-nseller",{uid:cur.id,f:st.followers||0,l:st.likes_total||0});NSELL=0;paintNotifs();}
+async function checkNotifs(){
+  try{
+    if(cur){
+      var st=await API.sellerStats();
+      if(st){var d=sellerDiff(st);if(!d){sellerAck(st);}else{NSELL=d.f+d.l;paintNotifs();}}
+    }
+  }catch(e){}
+  try{
+    var ids=Object.keys(FOLLOWS).filter(okId).slice(0,50),seen=nGet("mb-fseen");
+    if(!ids.length)return;
+    if(!seen){nSet("mb-fseen",new Date().toISOString());return;}
+    var r=await API.list({sellers:ids,offset:0}),n=0;
+    (r.items||[]).forEach(function(p){if(p.created_at>seen&&!(cur&&p.seller&&p.seller.id===cur.id))n++;});
+    NFOL=n;paintNotifs();
+  }catch(e){}
+}
 function banner(){
   var b=$("banner");
   if(!REMOTE){b.hidden=false;b.innerHTML="<b>Mode démonstration.</b> Les produits restent sur ce téléphone. Connecte la vitrine à Supabase pour que tout le monde les voie.";}
@@ -747,7 +779,7 @@ async function loadList(reset){
   S.loading=false;paintGrid();
 }
 function showHome(){
-  view.innerHTML='<form class="search" id="sf" role="search"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Que cherches-tu ?" aria-label="Rechercher un produit" value="'+esc(S.q)+'"><button class="go" type="submit">Chercher</button></form><div class="strow" id="strow" hidden></div><a class="disc" href="#/decouvrir">✨ Découvrir en glissant</a><div class="disc2"><a href="#/abonnements">★ Mes vendeurs</a><a href="#/top">🏆 Top vendeurs</a></div><select id="cf" class="cf" aria-label="Filtrer par commune ou ville"><option value="">Toutes les communes et villes</option><option value="Kinshasa">Toute la ville de Kinshasa</option><optgroup label="Communes de Kinshasa">'+COMMUNES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup><optgroup label="Autres villes">'+VILLES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup></select><div class="chips" id="chips" role="group" aria-label="Catégories"></div><div class="chips" id="subs" role="group" aria-label="Sous-catégories" hidden></div><div style="text-align:center"><a class="link" href="#/categories">Voir toutes les catégories</a></div><div id="grid" class="grid" aria-live="polite"></div><div id="more"></div><footer>Wanasci Global<br>Les visites sont comptées de façon anonyme.</footer>';
+  view.innerHTML='<form class="search" id="sf" role="search"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Que cherches-tu ?" aria-label="Rechercher un produit" value="'+esc(S.q)+'"><button class="go" type="submit">Chercher</button></form><div class="strow" id="strow" hidden></div><a class="disc" href="#/decouvrir">✨ Découvrir en glissant</a><div class="disc2"><a href="#/abonnements" id="nfl">★ Mes vendeurs'+(NFOL>0?'<span class="dot">'+(NFOL>99?'99+':NFOL)+'</span>':'')+'</a><a href="#/top">🏆 Top vendeurs</a></div><select id="cf" class="cf" aria-label="Filtrer par commune ou ville"><option value="">Toutes les communes et villes</option><option value="Kinshasa">Toute la ville de Kinshasa</option><optgroup label="Communes de Kinshasa">'+COMMUNES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup><optgroup label="Autres villes">'+VILLES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join("")+'</optgroup></select><div class="chips" id="chips" role="group" aria-label="Catégories"></div><div class="chips" id="subs" role="group" aria-label="Sous-catégories" hidden></div><div style="text-align:center"><a class="link" href="#/categories">Voir toutes les catégories</a></div><div id="grid" class="grid" aria-live="polite"></div><div id="more"></div><footer>Wanasci Global<br>Les visites sont comptées de façon anonyme.</footer>';
   paintChips();
   loadStories();
   $("cf").value=S.city;
@@ -878,6 +910,7 @@ function shareText(text,url,title){
   else copy(text+"\n"+url).then(function(ok){toast(ok?"Lien copié.":"Copie le lien à la main.");});
 }
 async function showFollowing(rid){
+  nSet("mb-fseen",new Date().toISOString());NFOL=0;paintNotifs();
   var ids=Object.keys(FOLLOWS).filter(okId).slice(0,50);
   var h='<button class="back" id="back">← Retour</button><h1 tabindex="-1" id="ptitle">Mes vendeurs</h1>';
   function wireBack(){$("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/";};}
@@ -1262,7 +1295,9 @@ async function showAccount(rid){
   API.sellerStats().then(function(st){
     var box=$("mystats");if(!box||rid!==routeId||!st)return;
     var v=st.views_7d||0,o=st.orders_7d||0,l=st.likes_total||0;
-    var t='<h2>Mes statistiques (7 jours)</h2><div class="tiles"><div class="tile"><b>'+v+'</b><span>Vues</span><small>de tes produits</small></div><div class="tile"><b>'+(st.followers||0)+'</b><span>Abonnés</span><small>te suivent</small></div><div class="tile"><b>'+l+'</b><span>Cœurs ♥</span><small>au total</small></div><div class="tile"><b>'+o+'</b><span>Clics Commander</span><small>acheteurs intéressés</small></div></div>';
+    var nd=sellerDiff(st),nb="";if(nd&&(nd.f||nd.l))nb='<div class="nb" role="status">🔔 Depuis ta dernière visite : '+[nd.f?'+'+nd.f+(nd.f>1?' abonnés':' abonné'):'',nd.l?'+'+nd.l+(nd.l>1?' cœurs':' cœur'):''].filter(Boolean).join(" · ")+'</div>';
+    sellerAck(st);
+    var t=nb+'<h2>Mes statistiques (7 jours)</h2><div class="tiles"><div class="tile"><b>'+v+'</b><span>Vues</span><small>de tes produits</small></div><div class="tile"><b>'+(st.followers||0)+'</b><span>Abonnés</span><small>te suivent</small></div><div class="tile"><b>'+l+'</b><span>Cœurs ♥</span><small>au total</small></div><div class="tile"><b>'+o+'</b><span>Clics Commander</span><small>acheteurs intéressés</small></div></div>';
     t+='<p class="note">'+(v>0?'🔥 Bravo ! '+v+(v>1?' personnes ont':' personne a')+' regardé tes produits cette semaine.':'Partage ta boutique pour recevoir tes premières vues.')+'</p>';
     if(st.items&&st.items.length)t+=st.items.slice(0,5).map(function(x){return '<a class="hd" style="display:block;text-decoration:none" href="#/p/'+encodeURIComponent(x.id)+'"><div class="t"><span>'+esc(x.title)+'</span><span>'+x.views+' vue'+(x.views>1?'s':'')+'</span></div><small>♥ '+x.likes+' · '+x.orders+' clic'+(x.orders>1?'s':'')+' Commander</small></a>';}).join("");
     box.innerHTML=t;
@@ -1573,7 +1608,7 @@ document.addEventListener("click",function(e){var b=e.target.closest("[data-fw]"
 window.addEventListener("hashchange",route);
 $("homeBtn").onclick=function(){if(location.hash&&location.hash!=="#/"&&location.hash!=="#"){location.hash="#/";}else{S.q="";S.cat="";S.loaded=false;showHome();window.scrollTo(0,0);}};
 $("sellBtn").onclick=function(){location.hash="#/compte";};
-banner();updateBar();route();trackVisit();
+banner();updateBar();route();trackVisit();setTimeout(checkNotifs,600);
 if(cur)API.me().then(function(m){if(m){cur=m;updateBar();}else if(session){/* session expirée */}}).catch(function(e){if(e&&(e.status===401||e.status===403)){saveSession(null);cur=null;updateBar();}});
 try{if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){navigator.serviceWorker.register("sw.js");}}catch(e){}
 })();
