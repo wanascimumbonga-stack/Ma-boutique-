@@ -162,6 +162,12 @@ textarea{min-height:96px;resize:vertical}
 .desc{white-space:pre-wrap;margin:12px 0}
 .seller{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
 .note{color:var(--mute);font-size:14px;margin:8px 0}
+.mod{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
+.mod .box{background:var(--card);color:var(--ink);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:90vh;overflow:auto}
+.mod label.rs{display:flex;align-items:center;gap:10px;min-height:44px;font-size:16px}
+.foot{max-width:720px;margin:24px auto 90px;padding:0 16px;text-align:center;color:var(--mute);font-size:13px}
+.foot a{color:var(--mute);margin:0 8px;text-decoration:underline}
+.legal h2{margin-top:20px}.legal p,.legal li{font-size:15px;line-height:1.5}
 .tip{background:var(--card);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:14px;margin-top:16px}
 .tabs{display:flex;gap:8px;margin:12px 0}
 .tabs .chip{flex:1}
@@ -242,6 +248,7 @@ footer{margin:32px 0 0;text-align:center;color:var(--mute);font-size:13px}
 </header>
 <div class="banner" id="banner" hidden></div>
 <main id="view" tabindex="-1"></main>
+<footer class="foot"><a href="#/conditions">Conditions d'utilisation</a><a href="#/confidentialite">Confidentialité</a></footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script>
@@ -435,7 +442,8 @@ var Remote={
     var pr=await http("GET",BASE+"/rest/v1/profiles?select=*&order=created_at.desc&limit=500");
     var pd=await http("GET",BASE+"/rest/v1/products?select=id,seller_id,title,price,currency,category,status,photos,created_at,featured_until&order=created_at.desc&limit=500");
     var rv=[];try{rv=await http("GET",BASE+"/rest/v1/revenues?select=*&order=paid_at.desc,created_at.desc&limit=500");}catch(e){rv=null;}
-    return{stats:st||{},profiles:pr||[],products:pd||[],revenues:rv};
+    var rp=[];try{rp=await http("GET",BASE+"/rest/v1/reports?select=*,products(title),profiles(name)&order=created_at.desc&limit=200");}catch(e){rp=null;}
+    return{stats:st||{},profiles:pr||[],products:pd||[],revenues:rv,reports:rp};
   },
   async stories(){
     var rows=await http("GET",BASE+"/rest/v1/stories?select=id,seller_id,photo,caption,created_at,expires_at,profiles(id,name,verified,founder,avatar)&expires_at=gt."+encodeURIComponent(new Date().toISOString())+"&order=created_at.desc&limit=80");
@@ -450,6 +458,9 @@ var Remote={
   async sellerStats(){return await http("POST",BASE+"/rest/v1/rpc/seller_stats",{});},
   async revAdd(r){var rows=await http("POST",BASE+"/rest/v1/revenues",r,{Prefer:"return=representation"});return rows&&rows[0];},
   async revDel(id){await http("DELETE",BASE+"/rest/v1/revenues?id=eq."+encodeURIComponent(id));},
+  async report(kind,id,reason,detail){await http("POST",BASE+"/rest/v1/rpc/report_item",{p_kind:kind,p_id:id,p_reason:reason,p_detail:detail||"",p_device:device()});},
+  async reportSet(id,st){await http("PATCH",BASE+"/rest/v1/reports?id=eq."+encodeURIComponent(id),{status:st});},
+  async reportDel(id){await http("DELETE",BASE+"/rest/v1/reports?id=eq."+encodeURIComponent(id));},
   async adminClearAvatar(uid){await http("POST",BASE+"/rest/v1/rpc/admin_clear_avatar",{p_user:uid});},
   async adminVerify(uid,val){await http("POST",BASE+"/rest/v1/rpc/admin_set_verified",{p_user:uid,p_value:!!val});},
   async adminFeature(pid,days){await http("POST",BASE+"/rest/v1/rpc/admin_set_featured",{p_product:pid,p_days:days});},
@@ -573,6 +584,7 @@ var Demo={
     var d=dload();
     return{
       stats:dstats(d),
+      reports:(d.reports||[]).map(function(r){var p=d.products.filter(function(x){return x.id===r.product_id;})[0],u=d.users.filter(function(x){return x.id===r.seller_id;})[0];return Object.assign({},r,{products:p?{title:p.title}:null,profiles:u?{name:u.profile.name}:null});}).sort(function(a,b){return a.created_at<b.created_at?1:-1;}),
       revenues:(d.revenues||[]).slice().sort(function(a,b){return a.paid_at<b.paid_at?1:-1;}),
       profiles:d.users.map(function(u){return Object.assign({id:u.id,created_at:u.created||new Date().toISOString()},u.profile);}),
       products:d.products.map(function(p){return{id:p.id,seller_id:p.seller_id,title:p.title,price:p.price,currency:p.currency,category:p.category,status:p.status,photos:p.photos,created_at:p.created_at,featured_until:p.featured_until||null};})
@@ -615,6 +627,9 @@ var Demo={
   },
   async revAdd(r){var d=dload();d.revenues=d.revenues||[];var x=Object.assign({id:"r"+Date.now(),created_at:new Date().toISOString()},r);d.revenues.push(x);dsave(d);return x;},
   async revDel(id){var d=dload();d.revenues=(d.revenues||[]).filter(function(x){return x.id!==id;});dsave(d);},
+  async report(kind,id,reason,detail){var d=dload();d.reports=d.reports||[];var dv=device();if(d.reports.some(function(r){return r.device===dv&&(r.product_id===id||r.seller_id===id);}))return;d.reports.push({id:"rp"+Date.now(),product_id:kind==="product"?id:null,seller_id:kind==="seller"?id:null,reason:reason,detail:(detail||"").slice(0,200),device:dv,status:"open",created_at:new Date().toISOString()});dsave(d);},
+  async reportSet(id,st){var d=dload();(d.reports||[]).forEach(function(r){if(r.id===id)r.status=st;});dsave(d);},
+  async reportDel(id){var d=dload();d.reports=(d.reports||[]).filter(function(r){return r.id!==id;});dsave(d);},
   async adminClearAvatar(uid){var d=dload(),u=d.users.filter(function(x){return x.id===uid;})[0];if(u){u.profile.avatar="";dsave(d);}},
   async adminVerify(uid,val){var d=dload(),u=d.users.filter(function(x){return x.id===uid;})[0];if(u){u.profile.verified=!!val;dsave(d);}},
   async adminFeature(pid,days){var d=dload(),p=d.products.filter(function(x){return x.id===pid;})[0];if(p){p.featured_until=days>0?new Date(Date.now()+Math.min(days,365)*864e5).toISOString():null;dsave(d);}},
@@ -1007,6 +1022,7 @@ async function showSeller(id,rid){
   var h='<button class="back" id="back">← Retour</button>';
   h+='<div class="seller">'+avHtml(sel,64)+'<h1 tabindex="-1" id="ptitle" style="margin:6px 0 0">'+esc(sel.name||"Vendeur")+'</h1>'+vfLine(sel)+(sel.city?'<div class="meta">'+esc(sel.city)+'</div>':'')+'<div class="meta"><span class="fcnt" data-fc="'+esc(id)+'">'+folTxt(sel.followers||0)+'</span></div>'+payHtml(sel.payments)+'</div>';
   h+='<div class="orow" style="margin-top:12px">'+(num?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+num+'?text='+encodeURIComponent("Bonjour "+(sel.name||"")+", j'ai vu votre boutique sur Ma boutique.")+'">WhatsApp</a>':'')+(ownS?'':'<button class="btn alt fw'+(FOLLOWS[id]?' on':'')+'" data-fw="'+esc(id)+'" aria-pressed="'+(FOLLOWS[id]?'true':'false')+'">'+(FOLLOWS[id]?'✓ Abonné':'＋ Suivre')+'</button>')+'<button class="btn alt" id="shs">Partager</button></div>';
+  if(!ownS)h+='<div style="text-align:center"><button class="link" style="background:none;border:0;font:inherit;min-height:44px;cursor:pointer" data-rpk="seller" data-rpt="'+esc(id)+'">Signaler ce vendeur</button></div>';
   h+='<h2>Produits en vente</h2><div id="sg" class="grid"></div><div id="sm"></div>';
   view.innerHTML=h;
   try{$("ptitle").focus({preventScroll:true});}catch(e){}
@@ -1054,7 +1070,7 @@ async function showDetail(id,rid){
   h+='<button class="btn alt lkbtn'+(LIKES[p.id]?' on':'')+'" id="lk" data-lk="'+esc(p.id)+'" aria-pressed="'+(LIKES[p.id]?'true':'false')+'"><span class="h">♥</span> J\'aime <span class="n">'+LCOUNT[p.id]+'</span></button>';
   if(videoOk(p.video))h+='<a class="btn alt" target="_blank" rel="noopener noreferrer" href="'+esc(videoOk(p.video))+'">▶ Voir la vidéo</a>';
   h+='<button class="btn alt" id="share">Partager ce produit</button>';
-  if(waNum(CFG.ADMIN_WHATSAPP))h+='<div style="text-align:center"><a class="link" target="_blank" rel="noopener" href="https://wa.me/'+waNum(CFG.ADMIN_WHATSAPP)+'?text='+encodeURIComponent("Signalement : "+p.title+"\n"+productLink(p.id))+'">Signaler ce produit</a></div>';
+  h+='<div style="text-align:center"><button class="link" style="background:none;border:0;font:inherit;min-height:44px;cursor:pointer" data-rpk="product" data-rpt="'+esc(p.id)+'">Signaler ce produit</button></div>';
   h+='<div class="tip"><b>Avant de payer</b><br>Regarde bien l\'article. Préfère payer à la livraison ou en main propre. Ne paie jamais à l\'avance à quelqu\'un que tu ne connais pas.</div>';
   view.innerHTML=h+bar;
   if(bar)document.body.classList.add("has-order");
@@ -1112,6 +1128,7 @@ function renderAuth(mode){
     h+=cityField("fc","");
     h+='<p class="note">Ton nom, ta ville, ton WhatsApp et ton nom Nuvalk seront visibles par tous les acheteurs. Il te faut au moins un des deux contacts.</p>';
   }
+  if(!login)h+='<p class="note">En créant un compte, tu acceptes les <a class="lnk" href="#/conditions">conditions d\'utilisation</a> et la <a class="lnk" href="#/confidentialite">politique de confidentialité</a>.</p>';
   h+='<div class="err" id="ferr" role="alert"></div><button class="btn" id="fgo" type="submit">'+(login?"Se connecter":"Créer mon compte")+'</button></form>';
   if(login)h+='<p class="note"><a class="lnk" href="#/oubli">Mot de passe oublié ?</a></p>';
   view.innerHTML=h;
@@ -1392,6 +1409,60 @@ function payStatsHtml(d,st){
   h+='<p class="note">« Copie du numéro » = un acheteur a appuyé sur Copier. Ce n\'est pas un paiement confirmé, mais ça montre quels moyens les acheteurs utilisent. Ces chiffres serviront de preuve auprès d\'un opérateur ou d\'un agrégateur de paiement.</p>';
   return h;
 }
+
+var RSN=[["arnaque","Arnaque ou faux produit"],["interdit","Produit ou contenu interdit"],["prix","Prix faux ou produit déjà vendu"],["photo","Photo ou nom inapproprié"],["autre","Autre problème"]];
+function rsnName(k){var r=RSN.filter(function(x){return x[0]===k;})[0];return r?r[1]:k;}
+function openReport(kind,id){
+  var m=document.createElement("div");m.className="mod";
+  m.innerHTML='<div class="box" role="dialog" aria-modal="true" aria-label="Signaler"><h2 style="margin:0 0 8px">Signaler '+(kind==="product"?"ce produit":"ce vendeur")+'</h2>'+RSN.map(function(r,i){return '<label class="rs"><input type="radio" name="rsn" value="'+r[0]+'"'+(i===0?' checked':'')+'> '+r[1]+'</label>';}).join("")+'<div class="field"><label for="rsd">Précision (facultatif)</label><input id="rsd" type="text" maxlength="200"></div><div class="err" id="rse" role="alert"></div><button class="btn" id="rsgo">Envoyer le signalement</button><button class="btn alt" id="rsno" type="button">Annuler</button></div>';
+  document.body.appendChild(m);
+  var close=function(){m.remove();};
+  m.onclick=function(e){if(e.target===m)close();};
+  m.querySelector("#rsno").onclick=close;
+  m.querySelector("#rsgo").onclick=async function(){var b=this;b.disabled=true;var v=m.querySelector("input[name=rsn]:checked").value;
+    try{await API.report(kind,id,v,m.querySelector("#rsd").value.trim().slice(0,200));close();toast("Merci, ton signalement a été envoyé.");}
+    catch(ex){m.querySelector("#rse").textContent=friendly(ex);b.disabled=false;}};
+}
+document.addEventListener("click",function(e){var b=e.target.closest("[data-rpt]");if(!b)return;e.preventDefault();openReport(b.getAttribute("data-rpk"),b.getAttribute("data-rpt"));});
+function contactLine(){var n=waNum(CFG.ADMIN_WHATSAPP);return n?'<a class="lnk" target="_blank" rel="noopener" href="https://wa.me/'+n+'">WhatsApp +'+esc(n)+'</a>':'le propriétaire de la vitrine, depuis l\'application';}
+function showLegal(kind){
+  var h='<button class="back" id="back">← Retour</button><div class="legal">';
+  if(kind==="conditions"){
+    h+='<h1 tabindex="-1" id="ptitle">Conditions d\'utilisation</h1><p class="note">Dernière mise à jour : novembre 2026.</p>'+
+    '<h2>Ce qu\'est Ma boutique</h2><p>Ma boutique est une vitrine en ligne : des vendeurs y présentent leurs produits et les acheteurs les contactent par WhatsApp ou Nuvalk. Nous ne vendons rien nous-mêmes.</p>'+
+    '<h2>Ce que nous ne faisons pas</h2><ul><li>Nous ne recevons ni ne gardons aucun paiement.</li><li>Nous ne livrons rien et ne garantissons ni la qualité ni l\'existence d\'un produit.</li><li>Chaque vente est un accord direct entre l\'acheteur et le vendeur, qui en sont seuls responsables.</li></ul>'+
+    '<h2>Conseils aux acheteurs</h2><p>Regarde bien l\'article. Préfère payer à la livraison ou en main propre. Ne paie jamais à l\'avance à quelqu\'un que tu ne connais pas. Un badge « vérifié » signifie seulement que le propriétaire a contrôlé le compte, pas que chaque vente est garantie.</p>'+
+    '<h2>Règles pour les vendeurs</h2><ul><li>Publie uniquement des produits que tu as le droit de vendre, avec de vraies photos et un vrai prix.</li><li>Interdits : armes, drogues, médicaments non autorisés, contrefaçons, contenus pour adultes, animaux protégés, et tout ce qui est interdit par la loi congolaise.</li><li>Ne publie pas la photo d\'une personne sans son accord.</li><li>Un seul compte par personne. Ne te fais pas passer pour quelqu\'un d\'autre.</li></ul>'+
+    '<h2>Modération</h2><p>Le propriétaire peut retirer un produit, une photo ou un compte qui ne respecte pas ces règles, sans préavis. Tu peux signaler un problème avec le bouton « Signaler ».</p>'+
+    '<h2>Responsabilité</h2><p>La vitrine est fournie telle quelle, sans garantie de disponibilité permanente. Nous ne sommes pas responsables des pertes liées à une vente entre utilisateurs.</p>'+
+    '<h2>Contact</h2><p>Pour toute question : '+contactLine()+'.</p>';
+  }else{
+    h+='<h1 tabindex="-1" id="ptitle">Confidentialité</h1><p class="note">Dernière mise à jour : novembre 2026.</p>'+
+    '<h2>Ce que nous gardons</h2><ul><li><b>Compte vendeur :</b> adresse e-mail, nom affiché, numéro WhatsApp, nom Nuvalk, ville, photo de profil.</li><li><b>Publications :</b> produits, photos, stories, prix.</li><li><b>Moyens de paiement :</b> les numéros que le vendeur choisit d\'afficher.</li><li><b>Statistiques anonymes :</b> un identifiant aléatoire stocké sur ton téléphone sert à compter les visites, les cœurs, les abonnés et les clics « Commander ». Il ne contient ni ton nom ni ton numéro.</li><li><b>Signalements :</b> la raison et l\'identifiant anonyme de l\'appareil.</li></ul>'+
+    '<h2>Ce qui est public</h2><p>Le nom, la ville, la photo, le numéro WhatsApp ou Nuvalk et les moyens de paiement d\'un vendeur, ainsi que ses produits, sont visibles par tous les visiteurs, car c\'est le principe d\'une vitrine. Ton adresse e-mail n\'est jamais affichée.</p>'+
+    '<h2>Où sont les données</h2><p>Elles sont hébergées chez Supabase. Nous ne vendons pas tes données et nous ne les partageons pas avec des publicitaires.</p>'+
+    '<h2>Tes droits</h2><p>Tu peux modifier ton profil et supprimer tes produits depuis « Mon espace ». Pour supprimer ton compte et tes données, contacte-nous : '+contactLine()+'.</p>';
+  }
+  h+='<p class="note">Ces textes sont un modèle simple. Ils ne remplacent pas un avis juridique.</p></div>';
+  view.innerHTML=h;$("ptitle").focus({preventScroll:true});
+  $("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/";};
+}
+function reportsHtml(d){
+  var l=d.reports;
+  if(l===null||l===undefined)return '<h2>Signalements</h2><p class="note">Pas encore actif : lance la migration v16 dans Supabase.</p>';
+  var open=l.filter(function(r){return r.status!=="done";}).length;
+  return '<h2>Signalements ('+open+' à traiter)</h2>'+(l.length?l.slice(0,50).map(function(r){
+    var what=r.product_id?'<a class="lnk" href="#/p/'+encodeURIComponent(r.product_id)+'">Produit : '+esc((r.products&&r.products.title)||"")+'</a>':'<a class="lnk" href="#/vendeur/'+encodeURIComponent(r.seller_id)+'">Vendeur : '+esc((r.profiles&&r.profiles.name)||"")+'</a>';
+    return '<div class="hd"><div class="t"><span>'+esc(rsnName(r.reason))+'</span><span>'+(r.status==="done"?"Traité":"À traiter")+'</span></div><small>'+what+'</small>'+(r.detail?'<small>« '+esc(r.detail)+' »</small>':'')+'<small>'+esc(dstr(r.created_at))+'</small><div class="acts">'+(r.status==="done"?'':'<button class="btn alt sm" data-rpd="'+esc(r.id)+'">Marquer traité</button>')+'<button class="btn alt sm" data-rpx="'+esc(r.id)+'">Supprimer</button></div></div>';
+  }).join(""):'<p class="note">Aucun signalement.</p>');
+}
+function exportHtml(){return '<h2>Sauvegarde</h2><p class="note">Télécharge une copie de tes vendeurs, produits, revenus et signalements. Fais-le au moins une fois par semaine et garde le fichier en lieu sûr. Si le téléchargement ne marche pas dans l\'application, ouvre la vitrine dans Chrome.</p><button class="btn alt" id="bk">Télécharger la sauvegarde</button>';}
+function doExport(d){
+  var data={exporte_le:new Date().toISOString(),profiles:d.profiles,products:d.products,revenues:d.revenues||[],reports:d.reports||[]};
+  var blob=new Blob([JSON.stringify(data,null,1)],{type:"application/json"}),a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="sauvegarde-ma-boutique-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();setTimeout(function(){a.remove();URL.revokeObjectURL(a.href);},1500);
+}
 async function showAdmin(rid,keep){
   if(!cur){location.hash="#/compte";return;}
   view.innerHTML=loading();
@@ -1416,6 +1487,8 @@ async function showAdmin(rid,keep){
     '<div class="tile"><b>'+ord+'</b><span>Commandes lancées</span><small>'+(st.orders_wa_7d||0)+' WhatsApp · '+(st.orders_nv_7d||0)+' Nuvalk</small></div></div>';
   h+='<h2>7 derniers jours</h2>'+chartSvg(st.daily&&st.daily.length?st.daily:[]);
   h+='<p class="note">Un visiteur = un téléphone ou navigateur, compté une fois par jour. Une commande lancée = un clic sur « Commander » : la vente, le paiement et la livraison se font sur WhatsApp ou Nuvalk, donc tu vois l\'intérêt des acheteurs, pas les ventes réelles. Les acheteurs n\'ont pas de compte : seuls les vendeurs sont des inscrits.</p>';
+  h+=reportsHtml(d);
+  h+=exportHtml();
   h+=revenueHtml(d);
   h+=payStatsHtml(d,st);
   var bc=st.by_category||{},cl=CATS.concat(LEGACY).filter(function(c){return bc[c[0]];});
@@ -1437,6 +1510,7 @@ async function showAdmin(rid,keep){
   view.innerHTML=h;
   if(keep)window.scrollTo(0,keep);else $("ptitle").focus({preventScroll:true});
   $("back").onclick=function(){if(history.length>1)history.back();else location.hash="#/compte";};
+  if($("bk"))$("bk").onclick=function(){doExport(d);toast("Sauvegarde téléchargée.");};
   if($("rvgo"))$("rvgo").onclick=async function(){
     var amt=parseFloat($("rva").value),err=$("rverr");err.textContent="";
     if(!(amt>0)){err.textContent="Écris le montant reçu.";$("rva").focus();return;}
@@ -1448,6 +1522,9 @@ async function showAdmin(rid,keep){
   view.onclick=async function(e){
     var rd=e.target.closest("[data-rd]");
     if(rd){if(rd.getAttribute("data-c")!=="1"){rd.setAttribute("data-c","1");rd.textContent="Confirmer";setTimeout(function(){if(rd.isConnected){rd.removeAttribute("data-c");rd.textContent="Supprimer";}},4000);return;}rd.disabled=true;try{await API.revDel(rd.getAttribute("data-rd"));toast("Paiement supprimé.");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));rd.disabled=false;}return;}
+    var rpd=e.target.closest("[data-rpd]"),rpx=e.target.closest("[data-rpx]");
+    if(rpd){rpd.disabled=true;try{await API.reportSet(rpd.getAttribute("data-rpd"),"done");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));rpd.disabled=false;}return;}
+    if(rpx){if(rpx.getAttribute("data-c")!=="1"){rpx.setAttribute("data-c","1");rpx.textContent="Confirmer";setTimeout(function(){if(rpx.isConnected){rpx.removeAttribute("data-c");rpx.textContent="Supprimer";}},4000);return;}try{await API.reportDel(rpx.getAttribute("data-rpx"));showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));}return;}
     var ca=e.target.closest("[data-ca]");if(ca){ca.disabled=true;try{await API.adminClearAvatar(ca.getAttribute("data-ca"));toast("Photo retirée.");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));ca.disabled=false;}return;}
     var vf=e.target.closest("[data-vf]"),ft=e.target.closest("[data-ft]");
     if(vf){vf.disabled=true;try{await API.adminVerify(vf.getAttribute("data-vf"),vf.getAttribute("data-v")==="1");S.loaded=false;toast(vf.getAttribute("data-v")==="1"?"Badge accordé.":"Badge retiré.");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));vf.disabled=false;}return;}
@@ -1479,6 +1556,7 @@ function route(){
   else if(r==="categories")showCategories();
   else if(r==="oubli")showForgot();
   else if(r==="reset")showReset();
+  else if(r==="conditions"||r==="confidentialite")showLegal(r);
   else if(r==="admin")showAdmin(rid);
   else if(r==="nouveau")showForm(null,rid);
   else if(r==="modifier"&&a[1])showForm(decodeURIComponent(a[1]),rid);
