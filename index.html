@@ -463,6 +463,8 @@ var Remote={
     var rows=await http("GET",BASE+"/rest/v1/stories?select=id,seller_id,photo,caption,created_at,expires_at,profiles(id,name,verified,founder,avatar)&expires_at=gt."+encodeURIComponent(new Date().toISOString())+"&order=created_at.desc&limit=80");
     return (rows||[]).map(function(r){var p=r.profiles||{};return{id:r.id,seller_id:r.seller_id,photo:r.photo,caption:r.caption||"",created_at:r.created_at,expires_at:r.expires_at,seller:{id:r.seller_id,name:p.name||"",verified:!!p.verified,founder:!!p.founder,avatar:p.avatar||"",rsum:Number(p.rating_sum)||0,rcount:Number(p.rating_count)||0}};});
   },
+  async storyView(id){await http("POST",BASE+"/rest/v1/rpc/story_view",{p_story:id,p_device:device()});},
+  async myStoryViews(){var r=await http("POST",BASE+"/rest/v1/rpc/my_story_views",{});var m={};(r||[]).forEach(function(x){m[x.story_id]=Number(x.views)||0;});return m;},
   async myStories(){return await http("GET",BASE+"/rest/v1/stories?select=*&seller_id=eq."+encodeURIComponent(cur.id)+"&order=created_at.desc&limit=30");},
   async storyAdd(photo,caption){var rows=await http("POST",BASE+"/rest/v1/stories",{seller_id:cur.id,photo:photo,caption:caption||""},{Prefer:"return=representation"});return rows&&rows[0];},
   async storyDel(id,photo){await http("DELETE",BASE+"/rest/v1/stories?id=eq."+encodeURIComponent(id));if(photo)API.drop([photo]);},
@@ -612,6 +614,8 @@ var Demo={
     var d=dload(),now=Date.now();
     return (d.stories||[]).filter(function(x){return new Date(x.expires_at).getTime()>now;}).map(function(x){var u=d.users.filter(function(y){return y.id===x.seller_id;})[0],p=u?u.profile:{};return Object.assign({},x,{seller:{id:x.seller_id,name:p.name||"",verified:!!p.verified,founder:!!p.founder,avatar:p.avatar||"",rsum:Number(p.rating_sum)||0,rcount:Number(p.rating_count)||0}});}).sort(function(a,b){return a.created_at<b.created_at?1:-1;});
   },
+  async storyView(id){var d=dload();d.storyViews=d.storyViews||[];var st=(d.stories||[]).filter(function(x){return x.id===id;})[0];if(!st||st.seller_id===(cur&&cur.id))return;var dv=device();if(d.storyViews.some(function(v){return v.story===id&&v.device===dv;}))return;d.storyViews.push({story:id,device:dv});dsave(d);},
+  async myStoryViews(){var d=dload(),m={};(d.storyViews||[]).forEach(function(v){m[v.story]=(m[v.story]||0)+1;});return m;},
   async myStories(){var d=dload();return (d.stories||[]).filter(function(x){return x.seller_id===cur.id;}).sort(function(a,b){return a.created_at<b.created_at?1:-1;});},
   async storyAdd(photo,caption){
     var d=dload();d.stories=d.stories||[];var now=Date.now();
@@ -845,7 +849,7 @@ function shareProduct(p){
 }
 
 /* ---------- Stories ---------- */
-var SSEEN={},STORIES=[];
+var SSEEN={},STORIES=[],SVIEWED={};
 try{SSEEN=JSON.parse(localStorage.getItem("mb-seen")||"{}")||{};}catch(e){SSEEN={};}
 function saveSeen(){try{var k=Object.keys(SSEEN);if(k.length>300)k.slice(0,k.length-300).forEach(function(x){delete SSEEN[x];});localStorage.setItem("mb-seen",JSON.stringify(SSEEN));}catch(e){}}
 function ago(ts){var m=Math.max(0,Math.round((Date.now()-new Date(ts).getTime())/6e4));if(m<2)return "à l'instant";if(m<60)return "il y a "+m+" min";return "il y a "+Math.round(m/60)+" h";}
@@ -875,6 +879,7 @@ function openStory(gi){
   function prev(){if(idx>0){idx--;show();}}
   function show(){
     var it=gr.items[idx];SSEEN[it.id]=1;saveSeen();
+    if(!SVIEWED[it.id]&&!(cur&&gr.seller&&gr.seller.id===cur.id)){SVIEWED[it.id]=1;API.storyView(it.id).catch(function(){});}
     var sid=encodeURIComponent(gr.seller.id);
     ov.innerHTML='<div class="svbars">'+gr.items.map(function(x,i){return '<span class="svb"><i class="'+(i<idx?'full':(i===idx?'run':''))+'"></i></span>';}).join("")+'</div>'+
       '<div class="svhead"><a class="svname" href="#/vendeur/'+sid+'">'+esc(gr.seller.name||"Vendeur")+badgeHtml(gr.seller)+'</a><span class="svt">'+ago(it.created_at)+'</span><button class="svx" aria-label="Fermer">✕</button></div>'+
@@ -897,9 +902,11 @@ async function loadMyStories(rid){
   var box=$("stmine");if(!box)return;
   var list=[];try{list=await API.myStories();}catch(e){return;}
   if(rid!==routeId||!$("stmine"))return;
-  var now=Date.now(),act=[];
+  var now=Date.now(),act=[],vm={};
+  try{vm=await API.myStoryViews()||{};}catch(e){}
+  if(rid!==routeId||!$("stmine"))return;
   list.forEach(function(x){if(new Date(x.expires_at).getTime()>now)act.push(x);else API.storyDel(x.id,x.photo).catch(function(){});});
-  $("stmine").innerHTML=act.length?act.map(function(x){return '<div class="mine"><img src="'+safeUrl(x.photo)+'" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px"><div class="t"><b>'+esc(x.caption||"Story")+'</b><div class="meta">'+esc(leftTxt(x.expires_at))+'</div></div><button class="btn alt sm" data-sd="'+esc(x.id)+'" data-sp="'+esc(x.photo)+'">Supprimer</button></div>';}).join(""):'<p class="note">Aucune story active.</p>';
+  $("stmine").innerHTML=act.length?act.map(function(x){return '<div class="mine"><img src="'+safeUrl(x.photo)+'" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px"><div class="t"><b>'+esc(x.caption||"Story")+'</b><div class="meta">'+esc(leftTxt(x.expires_at))+' · 👁 '+(vm[x.id]||0)+((vm[x.id]||0)>1?' vues':' vue')+'</div></div><button class="btn alt sm" data-sd="'+esc(x.id)+'" data-sp="'+esc(x.photo)+'">Supprimer</button></div>';}).join(""):'<p class="note">Aucune story active.</p>';
   $("stmine").onclick=async function(e){
     var b=e.target.closest("[data-sd]");if(!b)return;
     if(b.getAttribute("data-c")!=="1"){b.setAttribute("data-c","1");b.textContent="Confirmer";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-c");b.textContent="Supprimer";}},4000);return;}
