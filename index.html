@@ -179,6 +179,16 @@ textarea{min-height:96px;resize:vertical}
 .rsel label{font-size:34px;line-height:1;cursor:pointer;color:var(--line);min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
 .rsel label.on{color:#E8A100}
 .rsel input{position:absolute;opacity:0;width:1px;height:1px}
+.cv{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);text-decoration:none;color:inherit}
+.cv .t{flex:1;min-width:0}.cv .t b{display:block}.cv .t small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mute)}
+.bub{max-width:82%;padding:8px 12px;border-radius:16px;margin:6px 0;overflow-wrap:anywhere;background:var(--card);border:1px solid var(--line)}
+.bub.me{margin-left:auto;background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.bub small{display:block;opacity:.7;font-size:12px;margin-top:2px}
+.compose{display:flex;gap:8px;margin-top:12px;align-items:flex-end}
+.compose textarea,.mod textarea{flex:1;width:100%;min-height:80px;font:inherit;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
+.compose textarea{min-height:48px;max-height:120px}.compose .btn{width:auto}
+.offer{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.offer h3{margin:0 0 4px}.offer .pz{font-weight:800;font-size:20px;margin:6px 0}
 .tip{background:var(--card);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:14px;margin-top:16px}
 .tabs{display:flex;gap:8px;margin:12px 0}
 .tabs .chip{flex:1}
@@ -271,7 +281,7 @@ var BASE=String(CFG.SUPABASE_URL||"").replace(/\/+$/,"");
 var PAGE=24, MAXPH=4;
 var $=function(i){return document.getElementById(i);};
 var view=$("view");
-var CATS=[["vetements","Vêtements","👗"],["chaussures","Chaussures","👟"],["sacs","Sacs et accessoires","👜"],["beaute","Beauté et coiffure","💄"],["electronique","Électronique","📺"],["telephones","Téléphones et accessoires","📱"],["informatique","Informatique","💻"],["maison","Maison et décoration","🏠"],["meubles","Meubles","🛋️"],["cuisine","Cuisine et salle à manger","🍽️"],["electromenager","Électroménager","🧺"],["alimentation","Alimentation et boissons","🍎"],["bebe","Bébé et puériculture","🍼"],["jouets","Jouets et jeux","🧸"],["sport","Sports et fitness","⚽"],["auto","Automobile et moto","🚗"],["livres","Livres et littérature","📚"],["papeterie","Fournitures scolaires et bureau","✏️"],["sante","Santé et bien-être","🌿"],["bricolage","Bricolage et construction","🔧"],["jardin","Jardinage et extérieur","🌱"],["animaux","Animaux","🐾"],["musique","Musique et instruments","🎸"],["arts","Arts, loisirs et photographie","🎨"],["services","Services","🛠️"]];
+var CATS=[["vetements","Vêtements","👗"],["chaussures","Chaussures","👟"],["sacs","Sacs et accessoires","👜"],["beaute","Beauté et coiffure","💄"],["electronique","Électronique","📺"],["telephones","Téléphones et accessoires","📱"],["informatique","Informatique","💻"],["maison","Maison et décoration","🏠"],["meubles","Meubles","🛋️"],["cuisine","Cuisine et salle à manger","🍽️"],["electromenager","Électroménager","🧺"],["alimentation","Alimentation et boissons","🍎"],["bebe","Bébé et puériculture","🍼"],["jouets","Jouets et jeux","🧸"],["sport","Sports et fitness","⚽"],["auto","Automobile et moto","🚗"],["livres","Livres et littérature","📚"],["papeterie","Fournitures scolaires et bureau","✏️"],["sante","Santé et bien-être","🌿"],["bricolage","Bricolage et construction","🔧"],["jardin","Jardinage et extérieur","🌱"],["animaux","Animaux","🐾"],["musique","Musique et instruments","🎸"],["arts","Arts, loisirs et photographie","🎨"],["services","Services","🛠️"],["transport","Transport et livraison","🚚"]];
 var LEGACY=[["autres","Autres","📦"]];
 var SUBS={
 vetements:["Femmes","Hommes","Enfants","Sous-vêtements","Tenues de sport","Tenues traditionnelles et wax"],
@@ -298,6 +308,7 @@ jardin:["Plantes et fleurs","Outils de jardin","Meubles d'extérieur","Arrosage"
 animaux:["Chiens","Chats","Oiseaux","Poissons et aquariums","Nourriture","Accessoires pour animaux"],
 musique:["Guitares","Claviers et pianos","Batteries et percussions","Sono et micros","Instruments traditionnels","Accessoires musicaux"],
 arts:["Peinture et dessin","Photographie","Artisanat","Loisirs créatifs","Cadres et sculptures","Collections"],
+transport:["Livraison de colis en ville","Transport Kinshasa–Lubumbashi","Transport entre provinces","Déménagement","Moto-taxi livreur","Fret et camion","Transport international"],
 services:["Plomberie","Électricité","Climatisation et froid","Coiffure à domicile","Maçonnerie et peinture","Mécanique à domicile","Ménage et nettoyage","Autres services"]
 };
 var COMMUNES=["Bandalungwa","Barumbu","Bumbu","Gombe","Kalamu","Kasa-Vubu","Kimbanseke","Kintambo","Kisenso","Lemba","Limete","Lingwala","Makala","Maluku","Masina","Matete","Mont-Ngafula","Ndjili","Ngaba","Ngaliema","Ngiri-Ngiri","Nsele","Selembao"];
@@ -357,6 +368,7 @@ function badgeHtml(x){x=x||{};if(x.founder)return " "+((cur&&cur.id&&x.id===cur.
 function avHtml(x,px){x=x||{};px=px||40;var st='width:'+px+'px;height:'+px+'px;font-size:'+Math.round(px*.45)+'px';var u=safeUrl(x.avatar);if(u)return '<img class="av" style="'+st+'" src="'+u+'" alt="" loading="lazy">';return '<span class="av" style="'+st+'" aria-hidden="true">'+esc(((x.name||"V").trim().charAt(0)||"V").toUpperCase())+'</span>';}
 
 function sellerHtml(s){s=s||{};var n=esc(s.name||"")+badgeHtml(s);return [n,s.city?esc(s.city):""].filter(Boolean).join(" · ");}
+function isSvc(c){return c==="services"||c==="transport";}
 function isFeat(p){return !!(p&&p.featured_until&&new Date(p.featured_until).getTime()>Date.now());}
 function friendly(e){
   var m=(e&&e.message)||"";
@@ -457,7 +469,8 @@ var Remote={
     var pd=await http("GET",BASE+"/rest/v1/products?select=id,seller_id,title,price,currency,category,status,photos,created_at,featured_until&order=created_at.desc&limit=500");
     var rv=[];try{rv=await http("GET",BASE+"/rest/v1/revenues?select=*&order=paid_at.desc,created_at.desc&limit=500");}catch(e){rv=null;}
     var rp=[];try{rp=await http("GET",BASE+"/rest/v1/reports?select=*,products(title),profiles(name)&order=created_at.desc&limit=200");}catch(e){rp=null;}
-    return{stats:st||{},profiles:pr||[],products:pd||[],revenues:rv,reports:rp};
+    var bq=[];try{bq=await http("GET",BASE+"/rest/v1/boost_requests?select=*,profiles(name)&order=created_at.desc&limit=100");}catch(e){bq=null;}
+    return{stats:st||{},profiles:pr||[],products:pd||[],revenues:rv,reports:rp,boosts:bq};
   },
   async stories(){
     var rows=await http("GET",BASE+"/rest/v1/stories?select=id,seller_id,photo,caption,created_at,expires_at,profiles(id,name,verified,founder,avatar)&expires_at=gt."+encodeURIComponent(new Date().toISOString())+"&order=created_at.desc&limit=80");
@@ -474,6 +487,15 @@ var Remote={
   async sellerStats(){return await http("POST",BASE+"/rest/v1/rpc/seller_stats",{});},
   async revAdd(r){var rows=await http("POST",BASE+"/rest/v1/revenues",r,{Prefer:"return=representation"});return rows&&rows[0];},
   async revDel(id){await http("DELETE",BASE+"/rest/v1/revenues?id=eq."+encodeURIComponent(id));},
+  async boostRequest(kind,note){await http("POST",BASE+"/rest/v1/boost_requests",{kind:kind,note:note||""});},
+  async myBoosts(){return http("GET",BASE+"/rest/v1/boost_requests?select=id,kind,status,created_at&seller_id=eq."+encodeURIComponent(cur.id)+"&order=created_at.desc&limit=10");},
+  async boostSet(id,st){await http("PATCH",BASE+"/rest/v1/boost_requests?id=eq."+encodeURIComponent(id),{status:st});},
+  async sendMsg(sid,body,pid){return http("POST",BASE+"/rest/v1/rpc/send_message",{p_seller:sid,p_body:body,p_product:pid||null});},
+  async replyMsg(cid,body){await http("POST",BASE+"/rest/v1/rpc/reply_message",{p_conv:cid,p_body:body});},
+  async markRead(cid){await http("POST",BASE+"/rest/v1/rpc/mark_read",{p_conv:cid});},
+  async unread(){var n=await http("POST",BASE+"/rest/v1/rpc/unread_total",{});return Number(n)||0;},
+  async convs(){return http("GET",BASE+"/rest/v1/conversations?select=id,buyer_id,seller_id,last_text,last_at,buyer_unread,seller_unread,buyer:profiles!conversations_buyer_id_fkey(name,avatar),seller:profiles!conversations_seller_id_fkey(name,avatar)&order=last_at.desc&limit=100");},
+  async thread(cid){return http("GET",BASE+"/rest/v1/messages?select=id,sender_id,body,created_at,product_id&conversation_id=eq."+encodeURIComponent(cid)+"&order=created_at.asc&limit=300");},
   async reviews(sid){return http("GET",BASE+"/rest/v1/reviews?select=id,rating,comment,created_at,reviewer_id,profiles!reviews_reviewer_id_fkey(name,avatar)&seller_id=eq."+encodeURIComponent(sid)+"&order=created_at.desc&limit=40");},
   async reviewSave(sid,rating,comment){await http("POST",BASE+"/rest/v1/reviews?on_conflict=seller_id,reviewer_id",{seller_id:sid,reviewer_id:cur.id,rating:rating,comment:comment},{Prefer:"resolution=merge-duplicates"});},
   async reviewDel(id){await http("DELETE",BASE+"/rest/v1/reviews?id=eq."+encodeURIComponent(id));},
@@ -604,6 +626,7 @@ var Demo={
     var d=dload();
     return{
       stats:dstats(d),
+      boosts:(d.boosts||[]).map(function(b){var u=d.users.filter(function(x){return x.id===b.seller_id;})[0];return Object.assign({},b,{profiles:u?{name:u.profile.name}:null});}).sort(function(a,b){return a.created_at<b.created_at?1:-1;}),
       reports:(d.reports||[]).map(function(r){var p=d.products.filter(function(x){return x.id===r.product_id;})[0],u=d.users.filter(function(x){return x.id===r.seller_id;})[0];return Object.assign({},r,{products:p?{title:p.title}:null,profiles:u?{name:u.profile.name}:null});}).sort(function(a,b){return a.created_at<b.created_at?1:-1;}),
       revenues:(d.revenues||[]).slice().sort(function(a,b){return a.paid_at<b.paid_at?1:-1;}),
       profiles:d.users.map(function(u){return Object.assign({id:u.id,created_at:u.created||new Date().toISOString()},u.profile);}),
@@ -649,6 +672,15 @@ var Demo={
   },
   async revAdd(r){var d=dload();d.revenues=d.revenues||[];var x=Object.assign({id:"r"+Date.now(),created_at:new Date().toISOString()},r);d.revenues.push(x);dsave(d);return x;},
   async revDel(id){var d=dload();d.revenues=(d.revenues||[]).filter(function(x){return x.id!==id;});dsave(d);},
+  async boostRequest(kind,note){var d=dload();d.boosts=d.boosts||[];if(d.boosts.some(function(b){return b.seller_id===cur.id&&b.kind===kind&&b.status==="open";}))throw new Error("duplicate key value: tu as déjà une demande en attente.");d.boosts.push({id:"bq"+Date.now(),seller_id:cur.id,kind:kind,note:(note||"").slice(0,200),status:"open",created_at:new Date().toISOString()});dsave(d);},
+  async myBoosts(){var d=dload();return (d.boosts||[]).filter(function(b){return b.seller_id===cur.id;}).sort(function(a,b){return a.created_at<b.created_at?1:-1;});},
+  async boostSet(id,st){var d=dload();(d.boosts||[]).forEach(function(b){if(b.id===id)b.status=st;});dsave(d);},
+  async sendMsg(sid,body,pid){var d=dload();body=(body||"").trim();if(!cur)throw new Error("Connecte-toi pour écrire.");if(sid===cur.id)throw new Error("Tu ne peux pas t'écrire à toi-même.");if(!body||body.length>500)throw new Error("Message de 1 à 500 caractères.");d.convs=d.convs||[];d.msgs=d.msgs||[];var c=d.convs.filter(function(x){return x.buyer_id===cur.id&&x.seller_id===sid;})[0];if(!c){c={id:"c"+Date.now()+Math.floor(Math.random()*1e4),buyer_id:cur.id,seller_id:sid,last_text:"",last_at:"",buyer_unread:0,seller_unread:0};d.convs.push(c);}d.msgs.push({id:"m"+Date.now()+Math.floor(Math.random()*1e4),conversation_id:c.id,sender_id:cur.id,body:body,product_id:pid||null,created_at:new Date().toISOString()});c.last_text=body.slice(0,80);c.last_at=new Date().toISOString();c.seller_unread++;dsave(d);return c.id;},
+  async replyMsg(cid,body){var d=dload();body=(body||"").trim();var c=(d.convs||[]).filter(function(x){return x.id===cid&&(x.buyer_id===cur.id||x.seller_id===cur.id);})[0];if(!c)throw new Error("Conversation introuvable.");if(!body||body.length>500)throw new Error("Message de 1 à 500 caractères.");d.msgs.push({id:"m"+Date.now()+Math.floor(Math.random()*1e4),conversation_id:cid,sender_id:cur.id,body:body,product_id:null,created_at:new Date().toISOString()});c.last_text=body.slice(0,80);c.last_at=new Date().toISOString();if(cur.id===c.buyer_id)c.seller_unread++;else c.buyer_unread++;dsave(d);},
+  async markRead(cid){var d=dload();(d.convs||[]).forEach(function(c){if(c.id===cid){if(c.buyer_id===cur.id)c.buyer_unread=0;if(c.seller_id===cur.id)c.seller_unread=0;}});dsave(d);},
+  async unread(){var d=dload(),n=0;(d.convs||[]).forEach(function(c){if(c.buyer_id===cur.id)n+=c.buyer_unread;else if(c.seller_id===cur.id)n+=c.seller_unread;});return n;},
+  async convs(){var d=dload();function pf(id){var u=d.users.filter(function(x){return x.id===id;})[0];return u?{name:u.profile.name,avatar:u.profile.avatar||""}:{name:"",avatar:""};}return (d.convs||[]).filter(function(c){return c.buyer_id===cur.id||c.seller_id===cur.id;}).sort(function(a,b){return a.last_at<b.last_at?1:-1;}).map(function(c){return Object.assign({},c,{buyer:pf(c.buyer_id),seller:pf(c.seller_id)});});},
+  async thread(cid){var d=dload();var c=(d.convs||[]).filter(function(x){return x.id===cid&&(x.buyer_id===cur.id||x.seller_id===cur.id);})[0];if(!c)return[];return (d.msgs||[]).filter(function(m){return m.conversation_id===cid;}).sort(function(a,b){return a.created_at<b.created_at?-1:1;});},
   async reviews(sid){var d=dload();return (d.reviews||[]).filter(function(r){return r.seller_id===sid;}).sort(function(a,b){return a.created_at<b.created_at?1:-1;}).map(function(r){var u=d.users.filter(function(x){return x.id===r.reviewer_id;})[0];return Object.assign({},r,{profiles:u?{name:u.profile.name,avatar:u.profile.avatar||""}:{name:"",avatar:""}});});},
   async reviewSave(sid,rating,comment){var d=dload();d.reviews=d.reviews||[];var e=d.reviews.filter(function(r){return r.seller_id===sid&&r.reviewer_id===cur.id;})[0];if(sid===cur.id)throw new Error("forbidden");if(e){e.rating=rating;e.comment=comment;}else d.reviews.push({id:"rv"+Date.now(),seller_id:sid,reviewer_id:cur.id,rating:rating,comment:comment,created_at:new Date().toISOString()});drecalc(d,sid);dsave(d);},
   async reviewDel(id){var d=dload();var r=(d.reviews||[]).filter(function(x){return x.id===id;})[0];if(!r)return;d.reviews=d.reviews.filter(function(x){return x.id!==id;});drecalc(d,r.seller_id);dsave(d);},
@@ -713,10 +745,10 @@ function compress(file){
 }
 
 /* ---------- Barre et bannière ---------- */
-var NSELL=0,NFOL=0;
+var NSELL=0,NFOL=0,NMSG=0;
 function paintNotifs(){
   var b=$("sellBtn");b.textContent=cur?"Mon espace":"Vendre";
-  if(cur&&NSELL>0){var d=document.createElement("span");d.className="dot";d.textContent=NSELL>99?"99+":String(NSELL);b.appendChild(d);b.setAttribute("aria-label","Mon espace, "+NSELL+" nouveauté"+(NSELL>1?"s":""));}else b.removeAttribute("aria-label");
+  var NT=NSELL+NMSG;if(cur&&NT>0){var d=document.createElement("span");d.className="dot";d.textContent=NT>99?"99+":String(NT);b.appendChild(d);b.setAttribute("aria-label","Mon espace, "+NT+" nouveauté"+(NT>1?"s":""));}else b.removeAttribute("aria-label");
   var l=$("nfl");if(l){l.querySelector(".dot")&&l.querySelector(".dot").remove();if(NFOL>0){var e=document.createElement("span");e.className="dot";e.textContent=NFOL>99?"99+":String(NFOL);l.appendChild(e);}}
 }
 function updateBar(){paintNotifs();}
@@ -733,6 +765,7 @@ async function checkNotifs(){
     if(cur){
       var st=await API.sellerStats();
       if(st){var d=sellerDiff(st);if(!d){sellerAck(st);}else{NSELL=d.f+d.l;paintNotifs();}}
+      try{NMSG=await API.unread();paintNotifs();}catch(e2){}
     }
   }catch(e){}
   try{
@@ -1122,6 +1155,7 @@ async function showSeller(id,rid){
   var h='<button class="back" id="back">← Retour</button>';
   h+='<div class="seller">'+avHtml(sel,64)+'<h1 tabindex="-1" id="ptitle" style="margin:6px 0 0">'+esc(sel.name||"Vendeur")+'</h1>'+vfLine(sel)+(sel.rcount?'<div class="meta" id="rtl">'+ratingTxt(sel)+'</div>':'<div class="meta" id="rtl"></div>')+(sel.city?'<div class="meta">'+esc(sel.city)+'</div>':'')+'<div class="meta"><span class="fcnt" data-fc="'+esc(id)+'">'+folTxt(sel.followers||0)+'</span></div>'+payHtml(sel.payments)+'</div>';
   h+='<div class="orow" style="margin-top:12px">'+(num?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+num+'?text='+encodeURIComponent("Bonjour "+(sel.name||"")+", j'ai vu votre boutique sur Ma boutique.")+'">WhatsApp</a>':'')+(ownS?'':'<button class="btn alt fw'+(FOLLOWS[id]?' on':'')+'" data-fw="'+esc(id)+'" aria-pressed="'+(FOLLOWS[id]?'true':'false')+'">'+(FOLLOWS[id]?'✓ Abonné':'＋ Suivre')+'</button>')+'<button class="btn alt" id="shs">Partager</button></div>';
+  if(!ownS)h+='<button class="btn alt" data-msg="'+esc(id)+'" style="max-width:260px">💬 Écrire à ce vendeur</button>';
   if(!ownS)h+='<div style="text-align:center"><button class="link" style="background:none;border:0;font:inherit;min-height:44px;cursor:pointer" data-rpk="seller" data-rpt="'+esc(id)+'">Signaler ce vendeur</button></div>';
   h+='<div id="rv"></div><h2>Produits en vente</h2><div id="sg" class="grid"></div><div id="sm"></div>';
   view.innerHTML=h;
@@ -1155,7 +1189,7 @@ async function showDetail(id,rid){
   var bar="",h='<button class="back" id="back">← Retour</button>';
   h+='<div class="gal" id="gal" tabindex="0" aria-label="Photos du produit">'+(ph.length?ph.map(function(u,i){return '<img src="'+u+'" alt="'+esc(p.title)+' – photo '+(i+1)+'"'+(i?' loading="lazy"':'')+'>';}).join(""):'<div class="none"></div>')+'</div>';
   if(ph.length>1)h+='<div class="gcount" id="gcount">1 / '+ph.length+'</div>';
-  h+='<h1 tabindex="-1" id="ptitle">'+esc(p.title)+'</h1><div class="pprice">'+esc(money(p))+(p.category==="services"?' <span class="fx">Prix fixe</span>':'')+'</div><p class="meta">'+esc(catName(p.category))+(p.subcategory?' › '+esc(p.subcategory):'')+(p.sizes?' · Tailles : '+esc(p.sizes):'')+(p.zone?' · Zone : '+esc(p.zone):'')+(isNew(p)&&p.status!=="sold"?' · <b class="newt">Nouveau</b>':'')+(p.status==="sold"?' · <b>Vendu</b>':'')+'</p>';
+  h+='<h1 tabindex="-1" id="ptitle">'+esc(p.title)+'</h1><div class="pprice">'+esc(money(p))+(isSvc(p.category)?' <span class="fx">'+(p.category==="transport"?"Tarif de base":"Prix fixe")+'</span>':'')+'</div><p class="meta">'+esc(catName(p.category))+(p.subcategory?' › '+esc(p.subcategory):'')+(p.sizes?' · Tailles : '+esc(p.sizes):'')+(p.zone?' · '+(p.category==='transport'?'Trajets':'Zone')+' : '+esc(p.zone):'')+(isNew(p)&&p.status!=="sold"?' · <b class="newt">Nouveau</b>':'')+(p.status==="sold"?' · <b>Vendu</b>':'')+'</p>';
   if(p.description)h+='<p class="desc">'+esc(p.description)+'</p>';
   h+='<div class="seller">'+avHtml(s,36)+' <b>'+esc(s.name||"Vendeur")+'</b>'+vfLine(s)+(s.rcount?'<div class="meta">'+ratingTxt(s)+'</div>':'')+(s.city?'<div class="meta">'+esc(s.city)+'</div>':'')+payHtml(s.payments)+(s.id?'<div class="meta"><span class="fcnt" data-fc="'+esc(s.id)+'">'+folTxt(s.followers)+'</span></div>':'')+(s.id&&!own?'<button class="btn alt fw'+(FOLLOWS[s.id]?' on':'')+'" data-fw="'+esc(s.id)+'" aria-pressed="'+(FOLLOWS[s.id]?'true':'false')+'">'+(FOLLOWS[s.id]?'✓ Abonné':'＋ Suivre')+'</button>':'')+(s.id?'<a class="link" href="#/vendeur/'+encodeURIComponent(s.id)+'">Voir tous ses produits</a>':'')+'</div>';
   if(own){h+='<a class="btn alt" href="#/modifier/'+encodeURIComponent(p.id)+'">Modifier mon produit</a>';}
@@ -1169,6 +1203,7 @@ async function showDetail(id,rid){
   }
   LCOUNT[p.id]=p.likes||0;
   h+='<button class="btn alt lkbtn'+(LIKES[p.id]?' on':'')+'" id="lk" data-lk="'+esc(p.id)+'" aria-pressed="'+(LIKES[p.id]?'true':'false')+'"><span class="h">♥</span> J\'aime <span class="n">'+LCOUNT[p.id]+'</span></button>';
+  if(p.seller&&p.seller.id&&!(cur&&p.seller.id===cur.id))h+='<button class="btn alt" data-msg="'+esc(p.seller.id)+'" data-mp="'+esc(p.id)+'">💬 Écrire au vendeur</button>';
   if(videoOk(p.video))h+='<a class="btn alt" target="_blank" rel="noopener noreferrer" href="'+esc(videoOk(p.video))+'">▶ Voir la vidéo</a>';
   h+='<button class="btn alt" id="share">Partager ce produit</button>';
   h+='<div style="text-align:center"><button class="link" style="background:none;border:0;font:inherit;min-height:44px;cursor:pointer" data-rpk="product" data-rpt="'+esc(p.id)+'">Signaler ce produit</button></div>';
@@ -1314,7 +1349,7 @@ async function showAccount(rid){
   var h='<h1 tabindex="-1" id="ptitle">Bonjour '+esc(pr.name||"")+'</h1>';
   pr.id=cur.id;if(pr.founder||pr.verified)h+='<div class="vf'+(pr.founder?' fo':'')+'">'+(pr.founder?VBF2+' Fondateur de Ma boutique':VB+' Ton compte est vérifié')+'</div>';
   h+='<div class="avl">'+avHtml(pr,64)+'<div><label class="btn alt sm" id="avlab">'+(pr.avatar?'Changer ma photo':'Ajouter ma photo')+'<input id="avin" class="vh" type="file" accept="image/*"></label>'+(pr.avatar?' <button class="btn alt sm" id="avdel" type="button">Retirer</button>':'')+'<div class="err" id="averr" role="alert"></div></div></div>';
-  h+='<a class="btn" href="#/nouveau">Vendre un produit</a>';
+  h+='<a class="btn" href="#/nouveau">Vendre un produit</a><a class="btn alt" href="#/messages">💬 Mes messages'+(NMSG>0?'<span class="dot">'+NMSG+'</span>':'')+'</a><a class="btn alt" href="#/pro">🚀 Booster ma boutique</a>';
   h+='<button class="btn alt" id="shop">Partager ma boutique</button><h2>Mes stories</h2><p class="note">Une photo visible 24 heures en haut de l\'accueil, 5 au maximum. Écris la légende avant de choisir la photo.</p><input id="stcap" type="text" maxlength="120" placeholder="Légende (facultatif)" aria-label="Légende de la story"><label class="btn alt stadd" style="margin-top:8px" id="stlab">＋ Ajouter une story<input id="stin" class="vh" type="file" accept="image/*"></label><div class="err" id="sterr" role="alert"></div><div id="stmine"></div><div id="mystats"></div>';
   h+='<h2>Mes produits ('+list.length+')</h2>';
   h+=list.length?list.map(function(p){
@@ -1427,7 +1462,7 @@ async function showForm(id,rid){
     $("fsb").innerHTML=o;$("fsb").disabled=!ss.length;
   }
   paintSubs(p?p.subcategory:"");
-  function paintSvc(){var sv=$("fk").value==="services";$("fsw").hidden=sv;$("fzw").hidden=!sv;}
+  function paintSvc(){var k=$("fk").value,sv=isSvc(k);$("fsw").hidden=sv;$("fzw").hidden=!sv;$("fzw").querySelector("label").textContent=k==="transport"?"Trajets et zones (ex. Kinshasa → Lubumbashi)":"Où te déplaces-tu ? (communes)";}
   paintSvc();
   $("fk").onchange=function(){paintSubs("");paintSvc();};
   paintPhotos();
@@ -1451,8 +1486,8 @@ async function showForm(id,rid){
         var u=await API.upload(ph.blob);uploaded.push(u);urls.push(u);
       }
       btn.textContent="Publication…";
-      var data={title:title,description:$("fd").value.trim(),price:price,currency:$("fcu").value,category:$("fk").value,subcategory:$("fsb").value,sizes:$("fk").value==="services"?"":$("fs").value.trim(),photos:urls};
-      if($("fk").value==="services")data.zone=$("fz").value.trim();else if(p&&p.zone)data.zone="";
+      var data={title:title,description:$("fd").value.trim(),price:price,currency:$("fcu").value,category:$("fk").value,subcategory:$("fsb").value,sizes:isSvc($("fk").value)?"":$("fs").value.trim(),photos:urls};
+      if(isSvc($("fk").value))data.zone=$("fz").value.trim();else if(p&&p.zone)data.zone="";
       if(vid||(p&&p.video))data.video_url=vid;
       var saved;
       if(p){saved=await API.update(p.id,data);if(!saved)throw new Error("Impossible d'enregistrer. Réessaie.");
@@ -1532,6 +1567,85 @@ function openReport(kind,id){
 }
 document.addEventListener("click",function(e){var b=e.target.closest("[data-rpt]");if(!b)return;e.preventDefault();openReport(b.getAttribute("data-rpk"),b.getAttribute("data-rpt"));});
 function contactLine(){var n=waNum(CFG.ADMIN_WHATSAPP);return n?'<a class="lnk" target="_blank" rel="noopener" href="https://wa.me/'+n+'">WhatsApp +'+esc(n)+'</a>':'le propriétaire de la vitrine, depuis l\'application';}
+
+/* ---------- Messagerie privée ---------- */
+function openMsgDialog(sid,pid){
+  var m=document.createElement("div");m.className="mod";
+  m.innerHTML='<div class="box" role="dialog" aria-modal="true" aria-label="Écrire au vendeur"><h2 style="margin:0 0 6px">Écrire au vendeur</h2><p class="note" style="margin:0 0 8px">Le vendeur verra ton message dans « Mes messages ».</p><textarea id="mmt" maxlength="500" placeholder="Bonjour, ce produit est-il disponible ?" aria-label="Ton message"></textarea><div class="err" id="mme" role="alert"></div><button class="btn" id="mmgo">Envoyer</button><button class="btn alt" id="mmno" type="button">Annuler</button></div>';
+  document.body.appendChild(m);var close=function(){m.remove();};
+  m.onclick=function(e){if(e.target===m)close();};m.querySelector("#mmno").onclick=close;
+  m.querySelector("#mmt").focus();
+  m.querySelector("#mmgo").onclick=async function(){var b=this,er=m.querySelector("#mme");er.textContent="";var t=m.querySelector("#mmt").value.trim();
+    if(!t){er.textContent="Écris ton message.";return;}b.disabled=true;
+    try{var cid=await API.sendMsg(sid,t,pid);close();location.hash="#/messages/"+encodeURIComponent(cid);}
+    catch(ex){er.textContent=friendly(ex);b.disabled=false;}};
+}
+document.addEventListener("click",function(e){var b=e.target.closest("[data-msg]");if(!b)return;e.preventDefault();
+  if(!cur){toast("Connecte-toi pour écrire au vendeur.");location.hash="#/compte";return;}
+  openMsgDialog(b.getAttribute("data-msg"),b.getAttribute("data-mp")||null);});
+function msgOther(c){var mine=cur.id===c.buyer_id;return{p:mine?c.seller:c.buyer,un:mine?c.buyer_unread:c.seller_unread};}
+async function showMessages(rid,cid){
+  if(!cur){renderAuth("login");return;}
+  view.innerHTML=loading();
+  var list;
+  try{list=await API.convs();}catch(e){if(rid!==routeId)return;view.innerHTML=errBox(friendly(e));$("retry").onclick=function(){showMessages(rid,cid);};return;}
+  if(rid!==routeId)return;
+  if(!cid){
+    var h='<button class="back" id="back">← Retour</button><h1 tabindex="-1" id="ptitle">Mes messages</h1>';
+    if(!list.length)h+='<p class="note">Aucun message pour l\'instant. Ouvre un produit et touche « Écrire au vendeur ».</p>';
+    h+=list.map(function(c){var o=msgOther(c);return '<a class="cv" href="#/messages/'+encodeURIComponent(c.id)+'">'+avHtml(o.p,44)+'<div class="t"><b>'+esc(o.p.name||"Utilisateur")+'</b><small>'+esc(c.last_text||"")+'</small></div><small>'+esc(ago(c.last_at))+'</small>'+(o.un>0?'<span class="dot">'+o.un+'</span>':'')+'</a>';}).join("");
+    view.innerHTML=h;$("ptitle").focus({preventScroll:true});$("back").onclick=function(){location.hash="#/compte";};
+    refreshUnread();return;
+  }
+  var conv=list.filter(function(c){return c.id===cid;})[0];
+  if(!conv){view.innerHTML=errBox("Conversation introuvable.");$("retry").onclick=function(){location.hash="#/messages";};return;}
+  var o=msgOther(conv),last="";
+  function draw(msgs){
+    var box=$("thr");if(!box)return;var atEnd=window.innerHeight+window.scrollY>=document.body.scrollHeight-80;
+    box.innerHTML=msgs.map(function(m){var me=m.sender_id===cur.id;return '<div class="bub'+(me?' me':'')+'">'+esc(m.body)+(m.product_id?'<small><a class="lnk" href="#/p/'+encodeURIComponent(m.product_id)+'">Voir le produit</a></small>':'')+'<small>'+esc(ago(m.created_at))+'</small></div>';}).join("")||'<p class="note">Pas encore de message.</p>';
+    if(atEnd||last==="")window.scrollTo(0,document.body.scrollHeight);
+  }
+  async function load(first){
+    try{var msgs=await API.thread(cid);if(rid!==routeId)return;var key=msgs.length+":"+(msgs.length?msgs[msgs.length-1].id:"");
+      if(key!==last){var had=last!=="";last=key;draw(msgs);if(had||first){API.markRead(cid).then(refreshUnread).catch(function(){});}}}catch(e){}
+  }
+  var h2='<button class="back" id="back">← Mes messages</button><div class="avl">'+avHtml(o.p,44)+'<h1 tabindex="-1" id="ptitle" style="margin:0">'+esc(o.p.name||"Utilisateur")+'</h1></div><div id="thr"></div><div class="err" id="mre" role="alert"></div><div class="compose"><textarea id="mrt" maxlength="500" placeholder="Ton message" aria-label="Ton message"></textarea><button class="btn" id="mrs">Envoyer</button></div>';
+  view.innerHTML=h2;$("back").onclick=function(){location.hash="#/messages";};
+  await load(true);
+  $("mrs").onclick=async function(){var t=$("mrt").value.trim(),b=this;$("mre").textContent="";if(!t)return;b.disabled=true;
+    try{await API.replyMsg(cid,t);$("mrt").value="";last="";await load(false);}catch(ex){$("mre").textContent=friendly(ex);}b.disabled=false;};
+  if(S.mt)clearInterval(S.mt);
+  S.mt=setInterval(function(){if(rid!==routeId||!$("thr")){clearInterval(S.mt);S.mt=null;return;}if(!document.hidden)load(false);},8000);
+}
+async function refreshUnread(){try{NMSG=await API.unread();paintNotifs();}catch(e){}}
+
+/* ---------- Booster ma boutique ---------- */
+var BOOSTS=[["badge","Badge vérifié ✔","Le badge bleu rassure les acheteurs. Avant de le donner, le fondateur vérifie ton identité."],["featured","À la une","Tes produits apparaissent en haut de l'accueil avec l'étiquette « À la une ». La durée est fixée avec le fondateur."],["pro","Pack Pro","Le badge vérifié et « À la une » ensemble, pour un meilleur prix."]];
+function boostName(k){var b=BOOSTS.filter(function(x){return x[0]===k;})[0];return b?b[1]:k;}
+async function showPro(rid){
+  if(!cur){renderAuth("login");return;}
+  view.innerHTML=loading();
+  var mine=[];try{mine=await API.myBoosts()||[];}catch(e){}
+  if(rid!==routeId)return;
+  var P=CFG.PRO_PRICES||{};
+  var h='<button class="back" id="back">← Retour</button><h1 tabindex="-1" id="ptitle">Booster ma boutique</h1><p class="note">Fais ta demande ici. Le fondateur te répond et te dit comment payer par Mobile Money. Aucun paiement n\'est fait dans l\'application.</p>';
+  h+=BOOSTS.map(function(b){return '<div class="offer"><h3>'+b[1]+'</h3><p style="margin:0">'+b[2]+'</p><div class="pz">'+esc(P[b[0]]||"Tarif sur demande")+'</div><button class="btn" data-bk="'+b[0]+'">Faire la demande</button></div>';}).join("");
+  h+='<div class="field"><label for="bn">Message au fondateur (facultatif)</label><input id="bn" type="text" maxlength="200" placeholder="Ex. Je vends des téléphones à Gombe"></div><div class="err" id="ber" role="alert"></div>';
+  var n=waNum(CFG.ADMIN_WHATSAPP);if(n)h+='<a class="btn alt" target="_blank" rel="noopener" href="https://wa.me/'+n+'?text='+encodeURIComponent("Bonjour, je voudrais booster ma boutique sur Ma boutique.")+'">Écrire au fondateur sur WhatsApp</a>';
+  if(mine.length)h+='<h2>Mes demandes</h2>'+mine.map(function(b){return '<div class="hd"><div class="t"><span>'+esc(boostName(b.kind))+'</span><span>'+(b.status==="done"?"Traité":b.status==="refused"?"Refusé":"En attente")+'</span></div><small>'+esc(dstr(b.created_at))+'</small></div>';}).join("");
+  view.innerHTML=h;$("ptitle").focus({preventScroll:true});$("back").onclick=function(){location.hash="#/compte";};
+  view.onclick=async function(e){var b=e.target.closest("[data-bk]");if(!b)return;b.disabled=true;$("ber").textContent="";
+    try{await API.boostRequest(b.getAttribute("data-bk"),$("bn").value.trim());toast("Demande envoyée. Le fondateur te répondra.");showPro(rid);}
+    catch(ex){$("ber").textContent=/duplicate|déjà/i.test(ex.message||"")?"Tu as déjà une demande en attente pour cette offre.":friendly(ex);b.disabled=false;}};
+}
+function boostsHtml(d){
+  var l=d.boosts;
+  if(l===null||l===undefined)return '<h2>Demandes de boost</h2><p class="note">Pas encore actif : lance la migration v20 dans Supabase.</p>';
+  var open=l.filter(function(b){return b.status==="open";}).length;
+  return '<h2>Demandes de boost ('+open+' en attente)</h2>'+(l.length?'<p class="note">Après paiement, active le badge ou « À la une » plus bas, puis marque la demande comme traitée.</p>'+l.slice(0,50).map(function(b){
+    return '<div class="hd"><div class="t"><span>'+esc(boostName(b.kind))+'</span><span>'+(b.status==="done"?"Traité":b.status==="refused"?"Refusé":"En attente")+'</span></div><small><a class="lnk" href="#/vendeur/'+encodeURIComponent(b.seller_id)+'">'+esc((b.profiles&&b.profiles.name)||"Vendeur")+'</a> · '+esc(dstr(b.created_at))+'</small>'+(b.note?'<small>« '+esc(b.note)+' »</small>':'')+(b.status==="open"?'<div class="acts"><button class="btn alt sm" data-bd="'+esc(b.id)+'">Marquer traité</button><button class="btn alt sm" data-br="'+esc(b.id)+'">Refuser</button></div>':'')+'</div>';
+  }).join(""):'<p class="note">Aucune demande.</p>');
+}
 function showLegal(kind){
   var h='<button class="back" id="back">← Retour</button><div class="legal">';
   if(kind==="conditions"){
@@ -1594,6 +1708,7 @@ async function showAdmin(rid,keep){
     '<div class="tile"><b>'+ord+'</b><span>Commandes lancées</span><small>'+(st.orders_wa_7d||0)+' WhatsApp · '+(st.orders_nv_7d||0)+' Nuvalk</small></div></div>';
   h+='<h2>7 derniers jours</h2>'+chartSvg(st.daily&&st.daily.length?st.daily:[]);
   h+='<p class="note">Un visiteur = un téléphone ou navigateur, compté une fois par jour. Une commande lancée = un clic sur « Commander » : la vente, le paiement et la livraison se font sur WhatsApp ou Nuvalk, donc tu vois l\'intérêt des acheteurs, pas les ventes réelles. Les acheteurs n\'ont pas de compte : seuls les vendeurs sont des inscrits.</p>';
+  h+=boostsHtml(d);
   h+=reportsHtml(d);
   h+=exportHtml();
   h+=revenueHtml(d);
@@ -1629,6 +1744,8 @@ async function showAdmin(rid,keep){
   view.onclick=async function(e){
     var rd=e.target.closest("[data-rd]");
     if(rd){if(rd.getAttribute("data-c")!=="1"){rd.setAttribute("data-c","1");rd.textContent="Confirmer";setTimeout(function(){if(rd.isConnected){rd.removeAttribute("data-c");rd.textContent="Supprimer";}},4000);return;}rd.disabled=true;try{await API.revDel(rd.getAttribute("data-rd"));toast("Paiement supprimé.");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));rd.disabled=false;}return;}
+    var bd=e.target.closest("[data-bd]"),br=e.target.closest("[data-br]");
+    if(bd||br){var bt=bd||br;bt.disabled=true;try{await API.boostSet(bt.getAttribute(bd?"data-bd":"data-br"),bd?"done":"refused");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));bt.disabled=false;}return;}
     var rpd=e.target.closest("[data-rpd]"),rpx=e.target.closest("[data-rpx]");
     if(rpd){rpd.disabled=true;try{await API.reportSet(rpd.getAttribute("data-rpd"),"done");showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));rpd.disabled=false;}return;}
     if(rpx){if(rpx.getAttribute("data-c")!=="1"){rpx.setAttribute("data-c","1");rpx.textContent="Confirmer";setTimeout(function(){if(rpx.isConnected){rpx.removeAttribute("data-c");rpx.textContent="Supprimer";}},4000);return;}try{await API.reportDel(rpx.getAttribute("data-rpx"));showAdmin(routeId,window.scrollY);}catch(ex){toast(friendly(ex));}return;}
@@ -1651,6 +1768,7 @@ function route(){
   if(S.active)S.scroll=window.scrollY;
   S.active=(r==="");
   view.onclick=null;
+  if(S.mt){clearInterval(S.mt);S.mt=null;}
   document.body.classList.remove("has-order");document.body.classList.remove("feedmode");
   if(FEEDIO){FEEDIO.disconnect();FEEDIO=null;}
   if(r==="")showHome();
@@ -1664,6 +1782,8 @@ function route(){
   else if(r==="oubli")showForgot();
   else if(r==="reset")showReset();
   else if(r==="conditions"||r==="confidentialite")showLegal(r);
+  else if(r==="messages")showMessages(rid,a[1]?decodeURIComponent(a[1]):"");
+  else if(r==="pro")showPro(rid);
   else if(r==="admin")showAdmin(rid);
   else if(r==="nouveau")showForm(null,rid);
   else if(r==="modifier"&&a[1])showForm(decodeURIComponent(a[1]),rid);
