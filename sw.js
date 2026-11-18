@@ -1,4 +1,4 @@
-var C="boutique-v27",F=["./","index.html","cahier.html","config.js","manifest.json","logo-192.png","logo-512.png"];
+var C="boutique-v28",F=["./","index.html","cahier.html","config.js","manifest.json","logo-192.png","logo-512.png"];
 self.addEventListener("install",function(e){e.waitUntil(caches.open(C).then(function(c){return c.addAll(F);}));self.skipWaiting();});
 self.addEventListener("activate",function(e){e.waitUntil(caches.keys().then(function(k){return Promise.all(k.filter(function(x){return x!==C;}).map(function(x){return caches.delete(x);}));}));self.clients.claim();});
 self.addEventListener("fetch",function(e){
@@ -8,7 +8,7 @@ self.addEventListener("fetch",function(e){
 });
 self.addEventListener("push",function(e){
   var d={};try{d=e.data?e.data.json():{};}catch(x){d={title:"Ma boutique",body:e.data?e.data.text():""};}
-  e.waitUntil(self.registration.showNotification(d.title||"Ma boutique",{body:d.body||"",icon:"logo-192.png",badge:"logo-192.png",data:{url:d.url||"#/"},tag:d.url||"mb"}));
+  e.waitUntil(self.registration.showNotification(d.title||"Ma boutique",{body:d.body||"",icon:"logo-192.png",badge:"logo-192.png",vibrate:[200,100,200,100,300],renotify:true,data:{url:d.url||"#/"},tag:d.url||"mb"}));
 });
 self.addEventListener("notificationclick",function(e){
   e.notification.close();
