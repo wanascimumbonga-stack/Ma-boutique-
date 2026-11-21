@@ -1277,6 +1277,7 @@ async function showDetail(id,rid){
   h+='<button class="btn alt lkbtn'+(LIKES[p.id]?' on':'')+'" id="lk" data-lk="'+esc(p.id)+'" aria-pressed="'+(LIKES[p.id]?'true':'false')+'"><span class="h">♥</span> J\'aime <span class="n">'+LCOUNT[p.id]+'</span></button>';
   if(p.seller&&p.seller.id&&!(cur&&p.seller.id===cur.id))h+='<button class="btn alt" data-msg="'+esc(p.seller.id)+'" data-mp="'+esc(p.id)+'">💬 Écrire au vendeur</button>';
   if(payOk)h+='<button class="btn" id="paybtn">💳 Payer (TEST : argent fictif)</button>';
+  else if(!own&&p.status!=="sold")h+='<button class="btn alt" id="paysoon">💳 Payer en ligne (bientôt)</button>';
   if(videoOk(p.video))h+='<a class="btn alt" target="_blank" rel="noopener noreferrer" href="'+esc(videoOk(p.video))+'">▶ Voir la vidéo</a>';
   h+='<button class="btn alt" id="share">Partager ce produit</button>';
   h+='<div style="text-align:center"><button class="link" style="background:none;border:0;font:inherit;min-height:44px;cursor:pointer" data-rpk="product" data-rpt="'+esc(p.id)+'">Signaler ce produit</button></div>';
@@ -1290,6 +1291,7 @@ async function showDetail(id,rid){
   if(ph.length>1)gal.addEventListener("scroll",function(){var i=Math.round(gal.scrollLeft/gal.clientWidth);$("gcount").textContent=(i+1)+" / "+ph.length;});
   if($("wa"))$("wa").addEventListener("click",function(){track("order_wa",p.id);});
   $("lk").onclick=function(){toggleLike(p.id);};
+  if($("paysoon"))$("paysoon").onclick=function(){toast("Le paiement en ligne arrive bientôt. Pour commander maintenant, utilise WhatsApp ou Nuvalk.");};
   if($("paybtn"))$("paybtn").onclick=async function(){
     var b=this;
     if(b.getAttribute("data-c")!=="1"){b.setAttribute("data-c","1");b.textContent="Confirmer la commande TEST";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-c");b.textContent="💳 Payer (TEST : argent fictif)";}},4000);return;}
