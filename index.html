@@ -313,8 +313,8 @@ services:["Plomberie","Électricité","Climatisation et froid","Coiffure à domi
 };
 var COMMUNES=["Bandalungwa","Barumbu","Bumbu","Gombe","Kalamu","Kasa-Vubu","Kimbanseke","Kintambo","Kisenso","Lemba","Limete","Lingwala","Makala","Maluku","Masina","Matete","Mont-Ngafula","Ndjili","Ngaba","Ngaliema","Ngiri-Ngiri","Nsele","Selembao"];
 var VILLES=["Lubumbashi","Goma","Bukavu","Kisangani","Mbuji-Mayi","Kolwezi","Matadi","Kananga","Butembo","Uvira"];
-var PAY=[["orange","Orange Money"],["mpesa","M-Pesa"],["airtel","Airtel Money"],["afrimoney","Afrimoney"],["livraison","Paiement à la livraison"],["main","En main propre"]];
-var MOBILE=["orange","mpesa","airtel","afrimoney"];
+var PAY=[["orange","Orange Money"],["mpesa","M-Pesa"],["airtel","Airtel Money"],["wanasci","Wanasci Pay"],["afrimoney","Afrimoney"],["livraison","Paiement à la livraison"],["main","En main propre"]];
+var MOBILE=["orange","mpesa","airtel","afrimoney","wanasci"];
 function payMap(v){var m={};String(v||"").split(",").forEach(function(x){if(!x)return;var i=x.indexOf(":"),k=i>0?x.slice(0,i):x,n=i>0?x.slice(i+1):"";m[k]=n;});return m;}
 function payList(v){var m=payMap(v);return PAY.filter(function(p){return p[0] in m;}).map(function(p){return p[1]+(m[p[0]]?" : "+m[p[0]]:"");});}
 function payHtml(v){
@@ -322,6 +322,7 @@ function payHtml(v){
   PAY.forEach(function(p){
     if(!(p[0] in m))return;
     var n=m[p[0]];
+    if(p[0]==="wanasci"){rows.push('<div class="payl"><span>Wanasci Pay : <b>paiement en ligne</b></span></div>');return;}
     rows.push(n?'<div class="payl"><span>'+esc(p[1])+' : <b>'+esc(n)+'</b></span><button class="cp" type="button" data-copy="'+esc(n)+'" data-pay="'+p[0]+'">Copier</button></div>':'<div class="payl"><span>'+esc(p[1])+'</span></div>');
   });
   return rows.length?'<div class="meta"><b>Paiement accepté :</b></div>'+rows.join("")+'<div class="meta">Vérifie le nom du titulaire avant d\'envoyer de l\'argent.</div>':"";
@@ -1258,6 +1259,7 @@ async function showDetail(id,rid){
   var s=p.seller||{},own=!!(cur&&s.id===cur.id),ph=(p.photos||[]).map(safeUrl).filter(Boolean),num=waNum(s.whatsapp),nv=nvName(s.nuvalk),msg=orderMsg(p);
   FCOUNT[s.id]=s.followers||0;
   var payOk=false;if(cur&&p.status!=="sold"){payOk=await payAllowed();if(rid!==routeId)return;}
+  var wpId=wpMerchant(s.payments);
   var bar="",h='<button class="back" id="back">← Retour</button>';
   h+='<div class="gal" id="gal" tabindex="0" aria-label="Photos du produit">'+(ph.length?ph.map(function(u,i){return '<img src="'+u+'" alt="'+esc(p.title)+' – photo '+(i+1)+'"'+(i?' loading="lazy"':'')+'>';}).join(""):'<div class="none"></div>')+'</div>';
   if(ph.length>1)h+='<div class="gcount" id="gcount">1 / '+ph.length+'</div>';
@@ -1276,8 +1278,9 @@ async function showDetail(id,rid){
   LCOUNT[p.id]=p.likes||0;
   h+='<button class="btn alt lkbtn'+(LIKES[p.id]?' on':'')+'" id="lk" data-lk="'+esc(p.id)+'" aria-pressed="'+(LIKES[p.id]?'true':'false')+'"><span class="h">♥</span> J\'aime <span class="n">'+LCOUNT[p.id]+'</span></button>';
   if(p.seller&&p.seller.id&&!(cur&&p.seller.id===cur.id))h+='<button class="btn alt" data-msg="'+esc(p.seller.id)+'" data-mp="'+esc(p.id)+'">💬 Écrire au vendeur</button>';
+  if(wpId&&!own&&p.status!=="sold")h+='<button class="btn" id="wpbtn">💳 Payer avec Wanasci Pay</button><p class="note" id="wpnote">Paiement sécurisé dans Wanasci Pay (mode test : argent fictif).</p>';
   if(payOk)h+='<button class="btn" id="paybtn">💳 Payer (TEST : argent fictif)</button>';
-  else if(!own&&p.status!=="sold")h+='<button class="btn alt" id="paysoon">💳 Payer en ligne (bientôt)</button>';
+  else if(!own&&p.status!=="sold"&&!wpId)h+='<button class="btn alt" id="paysoon">💳 Payer en ligne (bientôt)</button>';
   if(videoOk(p.video))h+='<a class="btn alt" target="_blank" rel="noopener noreferrer" href="'+esc(videoOk(p.video))+'">▶ Voir la vidéo</a>';
   h+='<button class="btn alt" id="share">Partager ce produit</button>';
   h+='<div style="text-align:center"><button class="link" style="background:none;border:0;font:inherit;min-height:44px;cursor:pointer" data-rpk="product" data-rpt="'+esc(p.id)+'">Signaler ce produit</button></div>';
@@ -1291,6 +1294,7 @@ async function showDetail(id,rid){
   if(ph.length>1)gal.addEventListener("scroll",function(){var i=Math.round(gal.scrollLeft/gal.clientWidth);$("gcount").textContent=(i+1)+" / "+ph.length;});
   if($("wa"))$("wa").addEventListener("click",function(){track("order_wa",p.id);});
   $("lk").onclick=function(){toggleLike(p.id);};
+  if($("wpbtn"))$("wpbtn").onclick=function(){wpPay(p,s,wpId,this);};
   if($("paysoon"))$("paysoon").onclick=function(){toast("Le paiement en ligne arrive bientôt. Pour commander maintenant, utilise WhatsApp ou Nuvalk.");};
   if($("paybtn"))$("paybtn").onclick=async function(){
     var b=this;
@@ -1326,7 +1330,7 @@ function payField(val){
   var m=payMap(val);
   return '<div class="field"><label>Moyens de paiement acceptés</label><div class="pays">'+PAY.map(function(p){
     var on=p[0] in m,mob=MOBILE.indexOf(p[0])>=0;
-    return '<div class="payrow"><label class="pay"><input type="checkbox" name="pay" value="'+p[0]+'"'+(on?' checked':'')+'> '+esc(p[1])+'</label>'+(mob?'<input class="pnum" type="tel" inputmode="tel" maxlength="22" placeholder="Numéro '+esc(p[1])+'" aria-label="Numéro '+esc(p[1])+'" value="'+esc(m[p[0]]||"")+'"'+(on?'':' hidden')+'>':'')+'</div>';
+    return '<div class="payrow"><label class="pay"><input type="checkbox" name="pay" value="'+p[0]+'"'+(on?' checked':'')+'> '+esc(p[1])+'</label>'+(mob?'<input class="pnum" type="tel" inputmode="tel" maxlength="22" placeholder="'+(p[0]==="wanasci"?"Ton identifiant marchand Wanasci Pay":"Numéro "+esc(p[1]))+'" aria-label="'+(p[0]==="wanasci"?"Identifiant marchand Wanasci Pay":"Numéro "+esc(p[1]))+'" value="'+esc(m[p[0]]||"")+'"'+(on?'':' hidden')+'>':'')+'</div>';
   }).join("")+'</div><small>Écris le numéro qui reçoit l\'argent. Si tu laisses vide, tu donneras le numéro en discutant avec l\'acheteur.</small></div>';
 }
 function wirePay(){Array.prototype.forEach.call(view.querySelectorAll('input[name="pay"]'),function(i){i.onchange=function(){var n=i.closest(".payrow").querySelector(".pnum");if(n){n.hidden=!i.checked;if(i.checked)n.focus();}};});}
@@ -1896,6 +1900,65 @@ async function showAdmin(rid,keep){
   };
 }
 
+
+/* ---------- Wanasci Pay : paiement en ligne ---------- */
+var WPU=String(CFG.WP_URL||"https://wanasci-pay.onrender.com").replace(/\/$/,"");
+function wpMerchant(v){var m=payMap(v);if(!("wanasci" in m))return "";var n=String(m.wanasci||"").replace(/\D/g,"");return n&&n.length<=9?n:"";}
+function wpList(){try{return JSON.parse(localStorage.getItem("mb_wp")||"[]");}catch(e){return [];}}
+function wpSave(l){try{localStorage.setItem("mb_wp",JSON.stringify(l.slice(-20)));}catch(e){}}
+async function wpUsd(p){
+  var n=Number(p.price)||0;
+  if(p.currency==="USD")return Math.round(n*100)/100;
+  var rate=Number(CFG.WP_RATE)||2300;
+  try{var r=await fetch(WPU+"/api/rates");var j=await r.json();if(j&&j.rates&&Number(j.rates.USD)>0)rate=Number(j.rates.USD);}catch(e){}
+  return Math.ceil(n/rate*100)/100;
+}
+async function wpPay(p,s,id,btn){
+  btn.disabled=true;
+  try{
+    var usd=await wpUsd(p);
+    if(!(usd>=1)){toast("Le paiement en ligne commence à 1 $.");btn.disabled=false;return;}
+    if(usd>500){toast("Maximum 500 $ par paiement en ligne.");btn.disabled=false;return;}
+    var ref="MB"+String(p.id).replace(/[^A-Za-z0-9]/g,"").slice(0,8)+Date.now().toString(36);
+    var l=wpList();l.push({ref:ref,pid:p.id,m:id,usd:usd,title:String(p.title||"").slice(0,80),wa:waNum(s.whatsapp)||"",at:Date.now()});wpSave(l);
+    var back=location.origin+location.pathname+"#/retour";
+    location.href=WPU+"/?m="+id+"&amount="+usd+"&ref="+ref+"&desc="+encodeURIComponent(String(p.title||"Commande").slice(0,50))+"&return="+encodeURIComponent(back);
+  }catch(e){toast("Impossible d'ouvrir Wanasci Pay. Réessaie.");btn.disabled=false;}
+}
+function wpCatchReturn(){
+  try{
+    var q=new URLSearchParams(location.search),ref=q.get("wp_ref");
+    if(!ref)return;
+    S.wpRet={ref:ref,flag:q.get("wp_paid")};
+    history.replaceState(null,"",location.pathname+"#/retour");
+  }catch(e){}
+}
+async function showReturn(rid){
+  var ref=S.wpRet&&S.wpRet.ref,l=wpList(),rec=null;
+  if(ref)rec=l.filter(function(x){return x.ref===ref;})[0];
+  if(!rec&&l.length)rec=l[l.length-1];
+  if(!rec){location.hash="#/";return;}
+  view.innerHTML='<h1 tabindex="-1" id="ptitle">Paiement</h1><p class="note">Vérification du paiement…</p>';
+  var d=null,bad="";
+  try{var r=await fetch(WPU+"/api/pay-status?m="+encodeURIComponent(rec.m)+"&ref="+encodeURIComponent(rec.ref));d=await r.json();}catch(e){bad="Impossible de vérifier pour l'instant. Vérifie ta connexion.";}
+  if(rid!==routeId)return;
+  var h='<h1 tabindex="-1" id="ptitle">Paiement</h1>';
+  var link='<a class="btn alt" href="#/p/'+encodeURIComponent(rec.pid)+'">Retour au produit</a>';
+  if(d&&d.paid&&Number(d.amountCents)>=Math.round(rec.usd*100)){
+    rec.paid=true;wpSave(l.map(function(x){return x.ref===rec.ref?rec:x;}));
+    h+='<div class="tip"><b>✅ Paiement reçu</b><br>'+esc(rec.title)+' : <b>'+esc(String(rec.usd).replace(".",","))+' $</b><br>Référence : '+esc(rec.ref)+'</div>'+
+      '<p class="note">Contacte maintenant le vendeur pour la livraison ou le retrait. Donne-lui la référence ci-dessus.</p>'+
+      (rec.wa?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+esc(rec.wa)+'?text='+encodeURIComponent("Bonjour, j'ai payé « "+rec.title+" » ("+rec.usd+" $) avec Wanasci Pay. Référence : "+rec.ref)+'">Écrire au vendeur sur WhatsApp</a>':'')+link;
+  }else if(d&&d.paid){
+    h+='<div class="tip"><b>⚠️ Montant différent</b><br>Un paiement existe pour cette commande, mais le montant est inférieur à '+esc(String(rec.usd).replace(".",","))+' $. Contacte le vendeur.</div>'+link;
+  }else{
+    h+='<div class="tip"><b>Paiement non terminé</b><br>'+esc(bad||"Nous n'avons pas trouvé de paiement pour cette commande. Si tu as payé il y a quelques secondes, réessaie.")+'</div><button class="btn" id="wpretry">Vérifier encore</button><a class="btn alt" href="'+WPU+"/?m="+esc(rec.m)+"&amount="+esc(rec.usd)+"&ref="+esc(rec.ref)+'">Payer maintenant</a>'+link;
+  }
+  view.innerHTML=h;
+  var rt=$("wpretry");if(rt)rt.onclick=function(){showReturn(routeId);};
+  var t=$("ptitle");try{t.focus({preventScroll:true});}catch(e){}
+}
+
 /* ---------- Navigation ---------- */
 function route(){
   var rid=++routeId,h=location.hash.replace(/^#\/?/,""),a=h.split("/"),r=a[0]||"";
@@ -1919,6 +1982,7 @@ function route(){
   else if(r==="messages")showMessages(rid,a[1]?decodeURIComponent(a[1]):"");
   else if(r==="pro")showPro(rid);
   else if(r==="commandes")showOrders(rid);
+  else if(r==="retour")showReturn(rid);
   else if(r==="admin")showAdmin(rid);
   else if(r==="nouveau")showForm(null,rid);
   else if(r==="modifier"&&a[1])showForm(decodeURIComponent(a[1]),rid);
@@ -1935,7 +1999,7 @@ document.addEventListener("click",function(e){var b=e.target.closest("[data-fw]"
 window.addEventListener("hashchange",route);
 $("homeBtn").onclick=function(){if(location.hash&&location.hash!=="#/"&&location.hash!=="#"){location.hash="#/";}else{S.q="";S.cat="";S.loaded=false;showHome();window.scrollTo(0,0);}};
 $("sellBtn").onclick=function(){location.hash="#/compte";};
-banner();updateBar();route();trackVisit();setTimeout(checkNotifs,600);
+wpCatchReturn();banner();updateBar();route();trackVisit();setTimeout(checkNotifs,600);
 if(cur)API.me().then(function(m){if(m){cur=m;updateBar();}else if(session){/* session expirée */}}).catch(function(e){if(e&&(e.status===401||e.status===403)){saveSession(null);cur=null;updateBar();}});
 try{if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){navigator.serviceWorker.register("sw.js");}}catch(e){}
 })();
